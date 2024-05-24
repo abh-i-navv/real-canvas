@@ -5,12 +5,13 @@ import {Shape} from "../../shape"
 import { DrawingElement, useDrawingContext } from '../context/drawing-context';
 import { CanvasMode, LayerType, Point } from '@/types/canvas';
 import { ToolBar } from './toolbar';
-import { pointerEventToCanvasPoint } from '@/lib/utils';
+import { elementFinder, pointerEventToCanvasPoint } from '@/lib/utils';
+import { SelectionBox } from './selection-box';
 
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState } = useDrawingContext();
+    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection } = useDrawingContext();
     const [camera, setCamera] = useState<Point>({x:0, y:0})
     const [currEle, setCurrEle] = useState<DrawingElement>()
 
@@ -49,26 +50,37 @@ export const Canvas = () => {
 
               // console.log(selectedEle)
 
-              const testing = {x:point.x, y:point.y}
+              const newDimensions = {x:point.x, y:point.y}
 
               const {dimensions} = selectedEle
 
               if(dimensions.offsetX ){
-                testing.x -= dimensions.offsetX
+                newDimensions.x -= dimensions.offsetX
               }
               if(dimensions.offsetY){
-                testing.y -= dimensions.offsetY
+                newDimensions.y -= dimensions.offsetY
               }
 
               setCurrEle(selectedEle)
-              setCanvasState({mode: CanvasMode.Translating, current: testing})
+              const newSelection = [...selection]
+
+              const existingCheck = newSelection.find((el) => el.id === selectedEle.id)
+              
+              if(!existingCheck){
+                newSelection.push(selectedEle)
+                setSelection(newSelection)
+              }
+              
+              console.log(selectedEle.dimensions.w)
+
+              setCanvasState({mode: CanvasMode.Translating, current: newDimensions, id: selectedEle?.id, w: selectedEle.dimensions.w, h: selectedEle.dimensions.h})
               
             }
 
 
             else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Rectangle){
               setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Rectangle})
-              const rect:any = generator.rectangle(point.x,point.y,point.x,point.y)
+              const rect:any = generator.rectangle(point.x,point.y,0,0)
               setCurrEle(rect)
               addElement(rect)
               
@@ -81,15 +93,15 @@ export const Canvas = () => {
                 return
             }
 
-            setCurrEle(undefined)
+            
             if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Rectangle){
-
-             
+              
+              setCurrEle(undefined)
 
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.Rectangle})
             }
             else{
-              // console.log(currEle)
+              console.log(currEle.dimensions)
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
             }
 
@@ -103,30 +115,99 @@ export const Canvas = () => {
 
           const point = pointerEventToCanvasPoint(e,camera)
 
-          if(canvasState.mode === CanvasMode.Translating){
+          if(canvasState.mode === CanvasMode.None){
 
-            let offsetX = point.x - currEle.dimensions.x - ( canvasState.current.x - currEle.dimensions.x)
-            let offsetY = point.y - currEle.dimensions.y - ( canvasState.current.y - currEle.dimensions.y)
+            const threshold = 5
+
+            let offsetX = 0
+            let offsetY = 0
+
+            if(currEle.dimensions.offsetX){
+              offsetX = currEle.dimensions.offsetX
+            }
+
+            if(currEle.dimensions.offsetY){
+              offsetY = currEle.dimensions.offsetY
+            }
             
-            const temp = {...currEle}
+            if(Math.abs(point.y - currEle.dimensions.y - offsetY - currEle.dimensions.h ) <= threshold && point.x >= currEle.dimensions.x + offsetX && point.x <= currEle.dimensions.w + currEle.dimensions.x +offsetX){
+              e.target.style.cursor = "ns-resize"
 
-            temp.dimensions.offsetX = offsetX
-            temp.dimensions.offsetY = offsetY
-
-            updateElement(currEle.id, temp)
-
-            ctx?.clearRect(0,0,canvas.width,canvas.height)
-
-            ctx?.save()
-            ctx?.translate(camera.x,camera.y)
+            }
+            else if(Math.abs(point.x - (currEle.dimensions.w + currEle.dimensions.x + offsetX)) <= threshold && point.y >= currEle.dimensions.y + offsetY && point.y <= currEle.dimensions.y + offsetY + currEle.dimensions.h){
+              e.target.style.cursor = "ew-resize"
+            }
+            else{
+              e.target.style.cursor = "context-menu"
+            }
             
-            generator.draw(elements)
-
-            ctx?.restore()
-            // generator.translate()
 
           }
 
+          if(canvasState.mode === CanvasMode.Translating){
+
+            if(e.target.style.cursor === 'ew-resize' || e.target.style.cursor === 'ns-resize'){
+              let diffX = (point.x - canvasState.current.x )
+              let diffY = point.y - canvasState.current.y 
+              
+              console.log(canvasState.w)
+
+              if(currEle.dimensions.offsetX){
+                diffX -= currEle.dimensions.offsetX
+              }
+              if(currEle.dimensions.offsetY){
+                diffY -= currEle.dimensions.offsetY
+              }
+
+              ctx?.clearRect(0,0,canvas.width,canvas.height)
+
+              ctx?.save()
+              ctx?.translate(camera.x,camera.y)
+              generator.draw(elements)
+              ctx?.restore()
+
+              if(e.target.style.cursor === 'ew-resize'){
+                // currEle.dimensions.h += diffY
+                if(point.x > currEle.dimensions.x + (currEle.dimensions.offsetX ? currEle.dimensions.offsetX : 0)){
+                  currEle.dimensions.w = canvasState.w + diffX
+                }
+
+              }
+
+              if(e.target.style.cursor === 'ns-resize'){
+                // currEle.dimensions.h += diffY
+                if(point.y > currEle.dimensions.y + (currEle.dimensions.offsetY ? currEle.dimensions.offsetY : 0)){
+                  currEle.dimensions.h = canvasState.h + diffY
+                }
+
+              }
+              
+            }
+
+            else{
+
+              let offsetX = point.x - currEle.dimensions.x - ( canvasState.current.x - currEle.dimensions.x)
+              let offsetY = point.y - currEle.dimensions.y - ( canvasState.current.y - currEle.dimensions.y)
+              
+              const temp = {...currEle}
+              
+              temp.dimensions.offsetX = offsetX
+              temp.dimensions.offsetY = offsetY
+              
+              updateElement(currEle.id, temp)
+              
+              ctx?.clearRect(0,0,canvas.width,canvas.height)
+              
+              ctx?.save()
+              ctx?.translate(camera.x,camera.y)
+              
+              generator.draw(elements)
+              
+              ctx?.restore()
+              // generator.translate()
+            }
+
+          }
 
           if(canvasState.mode !== CanvasMode.Inserting || canvasState.layerType !== LayerType.Rectangle){
             return
@@ -138,7 +219,7 @@ export const Canvas = () => {
           ctx?.save()
           ctx?.translate(camera.x,camera.y)
 
-          const newRect: any = generator.rectangle(currEle.dimensions.x,currEle.dimensions.y, point.x, point.y)
+          const newRect: any = generator.rectangle(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y))
           updateElement(currEle.id, newRect)
           
           generator.draw(elements)
@@ -185,21 +266,7 @@ export const Canvas = () => {
         <>
             <ToolBar canvasState={canvasState} setCanvasState={setCanvasState}/>
             <canvas className='bg-blue-50' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
+            {/* <SelectionBox /> */}
         </>
     );
-};
-
-export const elementFinder = (point: Point, elements: Map<string, DrawingElement>): DrawingElement | null => {
-  const entries = Array.from(elements.entries());
-
-  for (let i = 0; i < entries.length; i++) {
-    const [key, el] = entries[i];
-    const { x, y, w, h,offsetX,offsetY } = el.dimensions;
-
-    if (x+(offsetX ? offsetX : 0) <= point.x && y+(offsetY ? offsetY : 0) <= point.y && x + w + (offsetX ? offsetX : 0) >= point.x && y + h + (offsetY ? offsetY : 0) >= point.y) {
-      return el;
-    }
-  }
-
-  return null;
 };

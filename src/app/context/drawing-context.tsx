@@ -31,6 +31,8 @@ export interface DrawingContextType {
     updateElement: (e: string, element:DrawingElement) => void;
     canvasState: CanvasState;
     setCanvasState: (newState: CanvasState) => void;
+    selection: DrawingElement[];
+    setSelection: (elements: DrawingElement[]) => void;
   }
 
 const DrawingContext = createContext<DrawingContextType | undefined>(undefined)
@@ -41,6 +43,7 @@ const DrawingProvider = ({children} : Readonly<{
     const [elements, setElements] = useState(new Map())
     const [isPaused,setIsPaused] = useState(false)
     const [canvasState,setCanvasState] = useState<CanvasState>({mode: CanvasMode.None, layerType: LayerType.None})
+    const [selection, setSelection] = useState<DrawingElement[]>([])
 
     const addElement = (element: DrawingElement | undefined) => {
         if(isPaused){
@@ -77,7 +80,7 @@ const DrawingProvider = ({children} : Readonly<{
       }
 
       return (
-        <DrawingContext.Provider value={{ elements, addElement, removeElement,pause , resume,updateElement,canvasState,setCanvasState }}>
+        <DrawingContext.Provider value={{ elements, addElement, removeElement,pause , resume,updateElement,canvasState,setCanvasState,setSelection, selection }}>
           {children}
         </DrawingContext.Provider>
       );
