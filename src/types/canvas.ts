@@ -1,3 +1,5 @@
+import { DrawingElement } from "@/app/context/drawing-context";
+
 export interface Point{
     x: number;
     y:number
@@ -10,7 +12,8 @@ export enum LayerType {
     Ellipse,
     Path,
     None,
-    Translate
+    Translate,
+    Line
   }
 
 export enum CanvasMode {
@@ -26,6 +29,8 @@ export enum CanvasMode {
 export type XYWH = {
     x: number;
     y: number;
+    a?: number;
+    b?: number;
     width: number;
     height: number;
   };
@@ -46,7 +51,8 @@ export type CanvasState =
           | LayerType.Text
           | LayerType.Note
           | LayerType.None
-          | LayerType.Translate;
+          | LayerType.Translate
+          | LayerType.Line;
       }
     | {
         mode: CanvasMode.Pressing;
@@ -61,8 +67,7 @@ export type CanvasState =
         mode: CanvasMode.Translating;
         current: Point;
         id?: string;
-        h: number;
-        w: number;
+        element: DrawingElement;
       }
     | {
         mode: CanvasMode.Inserting;
@@ -70,7 +75,8 @@ export type CanvasState =
           | LayerType.Ellipse
           | LayerType.Rectangle
           | LayerType.Text
-          | LayerType.Note;
+          | LayerType.Note
+          | LayerType.Line;
         current?: Point;
       }
     | {
@@ -81,3 +87,5 @@ export type CanvasState =
     | {
         mode: CanvasMode.Pencil;
       };
+
+export type shapeType = "rectangle" | "line"
