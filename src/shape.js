@@ -1,3 +1,5 @@
+import { getPathData } from "./lib/utils";
+
 export class Shape {
 
     idGen(){
@@ -214,6 +216,49 @@ export class Shape {
       return ele
     }
 
+    brush(x,y,w,h,points,options,dimensions){
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+      
+      this.type = "brush"
+      const path = getPathData(points,options)
+
+      let p = new Path2D(path)
+      this.ctx.save()
+
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      // this.style(options)
+      if(options){
+        this.ctx.fillStyle = options.strokeStyle
+      }
+      
+
+      this.ctx.fill(p)
+
+      const ele ={
+        id:this.idGen(),
+        points: points,
+        type: this.type,
+        dimensions: config,
+        options: (options ? options : this.options)
+      }
+      this.ctx.restore()
+      
+      return ele
+    }
+
+
     draw(elements){
 
       elements.forEach((el, key) => {
@@ -235,6 +280,9 @@ export class Shape {
               case "text":
                 const text = this.textBox(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.text,el.options,el.dimensions)
                 return text
+                case "brush":
+                  const brush = this.brush(el.dimensions.x, el.dimensions.y, el.dimensions.w, el.dimensions.h, el.points, el.options,el.dimensions)
+                  return brush
               default:
                 return
             }

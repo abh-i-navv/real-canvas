@@ -1,6 +1,6 @@
 "use client"
 
-import { CanvasMode, CanvasState, LayerType } from "@/types/canvas";
+import { CanvasMode, CanvasState, LayerType, Point } from "@/types/canvas";
 import { createContext, useContext, useState } from "react";
 
 export interface DrawingElement {
@@ -10,6 +10,7 @@ export interface DrawingElement {
     y1?: number;
     x2?: number;
     y2?: number;
+    points?: Point[];
     text?: string;
     dimensions: {
         x: number;

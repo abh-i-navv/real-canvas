@@ -13,7 +13,8 @@ export enum LayerType {
     Path,
     None,
     Translate,
-    Line
+    Line,
+    Pencil
   }
 
 export enum CanvasMode {
@@ -52,7 +53,8 @@ export type CanvasState =
           | LayerType.Note
           | LayerType.None
           | LayerType.Translate
-          | LayerType.Line;
+          | LayerType.Line
+          | LayerType.Pencil;
       }
     | {
         mode: CanvasMode.Pressing;
@@ -76,8 +78,9 @@ export type CanvasState =
           | LayerType.Rectangle
           | LayerType.Text
           | LayerType.Note
-          | LayerType.Line;
-        current?: Point;
+          | LayerType.Line
+          | LayerType.Pencil;
+        current?: Point | Point[] | any;
       }
     | {
         mode: CanvasMode.Resizing;

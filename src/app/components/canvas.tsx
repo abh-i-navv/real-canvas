@@ -5,7 +5,7 @@ import {Shape} from "../../shape"
 import { DrawingElement, useDrawingContext } from '../context/drawing-context';
 import { CanvasMode, LayerType, Point } from '@/types/canvas';
 import { ToolBar } from './toolbar';
-import { elementFinder, pointerEventToCanvasPoint } from '@/lib/utils';
+import { elementFinder, getPathData, pointerEventToCanvasPoint } from '@/lib/utils';
 import { SelectionBox } from './selection-box';
 import { RenderCanvas } from './render';
 
@@ -120,7 +120,8 @@ export const Canvas = () => {
             }
             else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Text){
               setSelectionBox(undefined)
-              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Text, current: {x:e.clientX, y: e.clientY}})
+              const pt = {x:e.clientX, y: e.clientY} as Point
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Text, current: pt})
               const text:any = generator.textBox(point.x,point.y,0,0,currText,options)
               setCurrEle(text)
               addElement(text)
@@ -128,6 +129,16 @@ export const Canvas = () => {
               setTimeout(() => {
                 inputRef.current?.focus();
               }, 0)
+              
+            }
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Pencil){
+              setSelectionBox(undefined)
+              const points=  [{x:point.x, y: point.y}]
+
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Pencil, current: points})
+              const text:any = generator.brush(point.x,point.y,5,5,points,options)
+              setCurrEle(text)
+              addElement(text)
               
             }
             
@@ -158,6 +169,10 @@ export const Canvas = () => {
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
             }
             else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text){
+            }
+            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Pencil){
+              setCurrEle(undefined)
+              setCanvasState({mode: CanvasMode.None, layerType: LayerType.Pencil})
             }
             else{
 
@@ -191,14 +206,14 @@ export const Canvas = () => {
             }
             
             if( (type !== 'line') && Math.abs(point.y - currEle.dimensions.y - offsetY - currEle.dimensions.h ) <= threshold && point.x >= currEle.dimensions.x + offsetX && point.x <= currEle.dimensions.w + currEle.dimensions.x +offsetX){
-              if(type === 'text'){
+              if(type === 'text' || type === 'brush'){
                 return
               }
               e.target.style.cursor = "ns-resize"
 
             }
             else if(type !== 'line' && Math.abs(point.x - (currEle.dimensions.w + currEle.dimensions.x + offsetX)) <= threshold && point.y >= currEle.dimensions.y + offsetY && point.y <= currEle.dimensions.y + offsetY + currEle.dimensions.h){
-              if(type === 'text'){
+              if(type === 'text' || type === 'brush'){
                 return
               }
               e.target.style.cursor = "ew-resize"
@@ -239,12 +254,12 @@ export const Canvas = () => {
                   }
                 }
                 if(type === 'line'){
-                  currEle.x2 = canvasState.element.x2 + diffX
-                  currEle.y2 = canvasState.element.y2 + diffY
-                  currEle.dimensions.x = Math.min(currEle.x1,currEle.x2) 
-                  currEle.dimensions.y = Math.min(currEle.y1,currEle.y2) 
-                  currEle.dimensions.w = Math.abs(currEle.x2-currEle.x1)
-                  currEle.dimensions.h = Math.abs(currEle.y2-currEle.y1)
+                  currEle.x2 = canvasState.element.x2! + diffX
+                  currEle.y2 = canvasState.element.y2! + diffY
+                  currEle.dimensions.x = Math.min(currEle.x1!,currEle.x2) 
+                  currEle.dimensions.y = Math.min(currEle.y1!,currEle.y2) 
+                  currEle.dimensions.w = Math.abs(currEle.x2-currEle.x1!)
+                  currEle.dimensions.h = Math.abs(currEle.y2-currEle.y1!)
                 }
 
               }
@@ -263,21 +278,21 @@ export const Canvas = () => {
               if(e.target.style.cursor === 'e-resize'){
                 
                 if(type === 'line'){
-                  currEle.x1 = canvasState.element.x1 + diffX
-                  currEle.y1 = canvasState.element.y1 + diffY
-                  currEle.dimensions.x = Math.min(currEle.x1,currEle.x2) 
-                  currEle.dimensions.y = Math.min(currEle.y1,currEle.y2) 
-                  currEle.dimensions.w = Math.abs(currEle.x2-currEle.x1)
-                  currEle.dimensions.h = Math.abs(currEle.y2-currEle.y1)
+                  currEle.x1 = canvasState.element.x1! + diffX
+                  currEle.y1 = canvasState.element.y1! + diffY
+                  currEle.dimensions.x = Math.min(currEle.x1,currEle.x2!) 
+                  currEle.dimensions.y = Math.min(currEle.y1,currEle.y2!) 
+                  currEle.dimensions.w = Math.abs(currEle.x2!-currEle.x1)
+                  currEle.dimensions.h = Math.abs(currEle.y2!-currEle.y1)
                 }
               }
 
               if(type === 'line'){
                 const bounds = {
-                  x: currEle.x1 + (currEle.dimensions.offsetX || 0),
-                  y: currEle.y1 + (currEle.dimensions.offsetY || 0),
-                  a: currEle.x2 + (currEle.dimensions.offsetX || 0),
-                  b:currEle.y2 + (currEle.dimensions.offsetY || 0),
+                  x: currEle.x1! + (currEle.dimensions.offsetX || 0),
+                  y: currEle.y1! + (currEle.dimensions.offsetY || 0),
+                  a: currEle.x2! + (currEle.dimensions.offsetX || 0),
+                  b:currEle.y2! + (currEle.dimensions.offsetY || 0),
                   width: currEle.dimensions.w,
                   height: currEle.dimensions.h
                 }
@@ -350,6 +365,37 @@ export const Canvas = () => {
             RenderCanvas(canvas, options,elements, camera)
 
           }
+          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Pencil){
+            
+            let newPts = canvasState.current as Point[]
+            const currPt = {x:point.x, y: point.y}
+
+            newPts = [...newPts, currPt]
+            canvasState.current = newPts
+
+            let minX = Number.MAX_SAFE_INTEGER
+            let minY = Number.MAX_SAFE_INTEGER
+            let maxX = Number.MIN_SAFE_INTEGER
+            let maxY = Number.MIN_SAFE_INTEGER
+
+            for(let i =0; i<newPts.length; i++){
+              minX = Math.min(newPts[i].x, minX)
+              maxX = Math.max(newPts[i].x, maxX)
+              minY = Math.min(newPts[i].y, minY)
+              maxY = Math.max(newPts[i].y, maxY)
+            }
+
+            currEle.dimensions.w = Math.abs(minX-maxX)
+            currEle.dimensions.h = Math.abs(minY-maxY)
+
+            currEle.dimensions.x = Math.min(currEle.dimensions.x, point.x)
+            currEle.dimensions.y = Math.min(currEle.dimensions.y, point.y)
+
+            const newSvg = generator.brush(currEle.dimensions.x, currEle.dimensions.y, currEle.dimensions.w, currEle.dimensions.h, canvasState.current, options)
+            updateElement(currEle.id, newSvg)
+
+            RenderCanvas(canvas, options,elements, camera)
+          }
 
           
 
@@ -415,9 +461,9 @@ export const Canvas = () => {
         <>
             <ToolBar canvasState={canvasState} setCanvasState={setCanvasState}/>
             {
-            canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle && 
+            canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle && canvasState.current as Point &&
               <input autoComplete='off' ref={inputRef} id='text-box' className={` bg-transparent w-auto fixed h-10 focus:outline-none font-serif text-4xl`}
-              style={{top: canvasState.current!.y, left:canvasState.current!.x, width: currText.length > 21 ? currText.length*20 : '394px'}}
+              style={{top: canvasState.current!.y, left:canvasState.current!.x , width: currText.length > 21 ? currText.length*20 : '394px'}}
               onChange={(e) => {setCurrText(e.target.value)}} />
 
             }
