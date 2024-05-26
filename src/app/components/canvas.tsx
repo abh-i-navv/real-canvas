@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {Shape} from "../../shape"
 import { DrawingElement, useDrawingContext } from '../context/drawing-context';
-import { CanvasMode, LayerType, Point, shapeType } from '@/types/canvas';
+import { CanvasMode, LayerType, Point } from '@/types/canvas';
 import { ToolBar } from './toolbar';
 import { elementFinder, pointerEventToCanvasPoint } from '@/lib/utils';
 import { SelectionBox } from './selection-box';
@@ -16,6 +16,8 @@ export const Canvas = () => {
     const [camera, setCamera] = useState<Point>({x:0, y:0})
     const [currEle, setCurrEle] = useState<DrawingElement>()
     const [selectionBox, setSelectionBox] = useState<DrawingElement | DrawingElement[]>()
+    const inputRef = useRef<HTMLInputElement>(null)
+    const [currText, setCurrText] = useState<string>('')
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -25,11 +27,11 @@ export const Canvas = () => {
         const ctx = canvas.getContext("2d")
         const options = {
             strokeStyle: "bevel",
-            lineWidth: 5,
+            lineWidth: 3,
             lineJoin: "bevel"
           } 
           const generator = new Shape(ctx,options)
-          
+
           RenderCanvas(canvas, options,elements, camera, selectionBox)
 
         const onPointerDown = (e: any) => {
@@ -47,7 +49,7 @@ export const Canvas = () => {
                 setSelectionBox(undefined)
                 return
               }
-              const type = selectedEle.type as shapeType
+              const type = selectedEle.type
               const newDimensions = {x:point.x, y:point.y}
 
               const {dimensions} = selectedEle
@@ -61,10 +63,10 @@ export const Canvas = () => {
 
               if(type === 'line'){
                 const bounds = {
-                  x: selectedEle.x1,
-                  y: selectedEle.y1,
-                  a: selectedEle.x2 + (dimensions.offsetX || 0),
-                  b: selectedEle.y2 + (dimensions.offsetY || 0),
+                  x: selectedEle.x1!,
+                  y: selectedEle.y1!,
+                  a: selectedEle.x2! + (dimensions.offsetX || 0),
+                  b: selectedEle.y2! + (dimensions.offsetY || 0),
                   width: selectedEle.dimensions.w,
                   height: selectedEle.dimensions.h
                 }
@@ -116,6 +118,18 @@ export const Canvas = () => {
               addElement(rect)
               
             }
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Text){
+              setSelectionBox(undefined)
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Text, current: {x:e.clientX, y: e.clientY}})
+              const text:any = generator.textBox(point.x,point.y,0,0,currText,options)
+              setCurrEle(text)
+              addElement(text)
+
+              setTimeout(() => {
+                inputRef.current?.focus();
+              }, 0)
+              
+            }
             
         }
 
@@ -139,11 +153,11 @@ export const Canvas = () => {
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.Ellipse})
             }
             else if(canvasState.mode === CanvasMode.Translating) {
-              console.log(canvasState)
               RenderCanvas(canvas,options,elements,camera)
-              console.log(elements)
 
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
+            }
+            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text){
             }
             else{
 
@@ -159,7 +173,7 @@ export const Canvas = () => {
           }
 
           const point = pointerEventToCanvasPoint(e,camera)
-          const type = currEle.type as shapeType
+          const type = currEle.type
 
           if(canvasState.mode === CanvasMode.None){
 
@@ -176,17 +190,23 @@ export const Canvas = () => {
               offsetY = currEle.dimensions.offsetY
             }
             
-            if( type !== 'line' && Math.abs(point.y - currEle.dimensions.y - offsetY - currEle.dimensions.h ) <= threshold && point.x >= currEle.dimensions.x + offsetX && point.x <= currEle.dimensions.w + currEle.dimensions.x +offsetX){
+            if( (type !== 'line') && Math.abs(point.y - currEle.dimensions.y - offsetY - currEle.dimensions.h ) <= threshold && point.x >= currEle.dimensions.x + offsetX && point.x <= currEle.dimensions.w + currEle.dimensions.x +offsetX){
+              if(type === 'text'){
+                return
+              }
               e.target.style.cursor = "ns-resize"
 
             }
             else if(type !== 'line' && Math.abs(point.x - (currEle.dimensions.w + currEle.dimensions.x + offsetX)) <= threshold && point.y >= currEle.dimensions.y + offsetY && point.y <= currEle.dimensions.y + offsetY + currEle.dimensions.h){
+              if(type === 'text'){
+                return
+              }
               e.target.style.cursor = "ew-resize"
             }
-            else if(type === 'line' && Math.abs(point.x - (currEle.x2 + offsetX)) <= threshold && Math.abs(point.y - (currEle.y2 + offsetY)) <= threshold){
+            else if(type === 'line' && Math.abs(point.x - (currEle.x2! + offsetX)) <= threshold && Math.abs(point.y - (currEle.y2! + offsetY)) <= threshold){
               e.target.style.cursor = "ew-resize"
             }
-            else if(type === 'line' && Math.abs(point.x - (currEle.x1 + offsetX)) <= threshold && Math.abs(point.y - (currEle.y1 + offsetY)) <= threshold){
+            else if(type === 'line' && Math.abs(point.x - (currEle.x1! + offsetX)) <= threshold && Math.abs(point.y - (currEle.y1! + offsetY)) <= threshold){
               e.target.style.cursor = "e-resize"
             }
             else{
@@ -334,18 +354,40 @@ export const Canvas = () => {
           
 
         }
+
+        const onKeyDown = (e: any) => {
+          if(!(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle)){
+            return
+          }
+
+          if(e.key === 'Enter'){            
+            currEle.text = currText
+            const metrics = ctx?.measureText(currText)
+            
+            if(metrics?.width){
+              currEle.dimensions.w = (Math.round(metrics?.width)*4)
+            }
+            
+
+            setCanvasState({mode: CanvasMode.None, layerType: LayerType.Text})
+            setCurrText('')
+            setCurrEle(undefined)
+          }
+        }
         
         canvas.addEventListener("pointerdown", onPointerDown)
         document.addEventListener("pointerup", onPointerUp)
         canvas.addEventListener("pointermove", onPointerMove)
+        document.addEventListener('keydown', onKeyDown)
 
         return () => {
             canvas.removeEventListener("pointerdown", onPointerDown)
             document.removeEventListener("pointerup", onPointerUp)
             canvas.removeEventListener("pointermove", onPointerMove)
+            document.removeEventListener('keydown', onKeyDown)
         }
         
-    }, [elements, dimensions,canvasState,camera]);
+    }, [elements, dimensions,canvasState,camera,currText]);
 
     const onWheel = useCallback((e: React.WheelEvent) => {
         setCamera((camera) => ({
@@ -372,6 +414,14 @@ export const Canvas = () => {
     return (
         <>
             <ToolBar canvasState={canvasState} setCanvasState={setCanvasState}/>
+            {
+            canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle && 
+              <input autoComplete='off' ref={inputRef} id='text-box' className={` bg-transparent w-auto fixed h-10 focus:outline-none font-serif text-4xl`}
+              style={{top: canvasState.current!.y, left:canvasState.current!.x, width: currText.length > 21 ? currText.length*20 : '394px'}}
+              onChange={(e) => {setCurrText(e.target.value)}} />
+
+            }
+
             <canvas className='bg-blue-50' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
         </>
     );

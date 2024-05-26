@@ -9,7 +9,7 @@ interface SelectionBoxProps{
     ctx: CanvasRenderingContext2D;
 }
 
-export const SelectionBox = (ctx:CanvasRenderingContext2D,type: shapeType,  bounds: XYWH, setSelectionBox : (element: DrawingElement) => void ) => {
+export const SelectionBox = (ctx:CanvasRenderingContext2D,type: string,  bounds: XYWH, setSelectionBox : (element: DrawingElement) => void ) => {
 
     const selectionGen = new Shape(ctx)
     const threshold = 5

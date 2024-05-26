@@ -5,11 +5,12 @@ import { createContext, useContext, useState } from "react";
 
 export interface DrawingElement {
     id: string;
-    type: 'rectangle';
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
+    type: string;
+    x1?: number;
+    y1?: number;
+    x2?: number;
+    y2?: number;
+    text?: string;
     dimensions: {
         x: number;
         y: number;
@@ -19,7 +20,6 @@ export interface DrawingElement {
         offsetY?: number;
         options?: any
     }
-    // Add other properties as needed
   }
 
 export interface DrawingContextType {

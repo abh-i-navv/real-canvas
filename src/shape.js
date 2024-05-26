@@ -169,6 +169,51 @@ export class Shape {
 
     }
 
+    textBox(x,y,w,h,text,options,dimensions){
+      this.type = "text"
+      this.text = text
+      this.x = x
+      this.y = y
+
+      w = w ? w : text.length*100
+
+      let config= {
+        x: x,
+        y: y,
+        w: w ,
+        h: h || 40       
+      }
+
+      this.ctx.save()
+      if(options){
+        this.ctx.fillStyle = options.strokeStyle
+      }
+
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      this.ctx.textBaseLine = "top"
+      this.ctx.font = "48px serif"
+      
+      this.ctx.fillText(text,x,y+40,w)
+      
+      this.ctx.restore()
+
+      const ele = {
+        id:this.idGen(),
+        text: this.text,
+        type : this.type,
+        dimensions: config,
+        options: (options ? options : this.options)
+      }
+
+      return ele
+    }
+
     draw(elements){
 
       elements.forEach((el, key) => {
@@ -187,44 +232,15 @@ export class Shape {
               case "ellipse":
                 const ellipse = this.ellipse(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions)
                 return ellipse
+              case "text":
+                const text = this.textBox(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.text,el.options,el.dimensions)
+                return text
               default:
                 return
             }
 
 
       });
-
-      // elements.map((el, i) => {
-      //   if(!el){
-      //     return
-      //   }
-      //   const shape = el.type
-
-      //   switch(shape){
-      //     case "rectangle":
-      //       const rect = this.rectangle(el.x1,el.y1,el.x2,el.y2,el.options)
-      //       return rect
-      //     case "line":
-      //       return this.line(el.x1,el.y1,el.x2,el.y2,el.options)
-      //     case "circle":
-      //       return this.circle(el.x1,el.y1,el.radius,el.options)
-      //     case "ellipse":
-      //       return this.ellipse(el.x1,el.y1,el.x2,el.y2,el.options)
-      //     case "polygon":
-      //       return this.polygon(el.points,el.options)
-      //     case "svg":
-      //       this.ctx.save()
-      //       const ele = this.svg(el.path,el.pointsArr,el.options,el.resize)
-      //       this.ctx.restore()
-      //       return ele
-      //     case "text":
-      //       return this.textBox(el.x,el.y,el.text,el.options,el.width)
-
-      //     default:
-      //       return
-      //   }
-
-      // })
     }
 
     move(element, x, y){
@@ -244,5 +260,6 @@ export class Shape {
 
       this.ctx.restore()
     }
+
 
 }
