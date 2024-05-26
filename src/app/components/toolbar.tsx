@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 import { CanvasMode, CanvasState, LayerType } from "@/types/canvas";
-import { Minus, MousePointer2, Square } from "lucide-react";
+import { Circle, Minus, MousePointer2, Square } from "lucide-react";
 
 interface ToolBarProps {
     canvasState: CanvasState;
@@ -18,6 +18,10 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
                 />
                 <MousePointer2 className={cn("m-5 hover:bg-purple-300", canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.None && "bg-purple-300")} onClick={() => setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})}/>
                 <Minus className={cn("m-5 hover:bg-purple-300", canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Line && "bg-purple-300")} onClick={() => setCanvasState({mode: CanvasMode.None, layerType: LayerType.Line})}/>
+                <Circle className={cn("m-5 hover:bg-purple-300", canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Ellipse && "bg-purple-300")} 
+                    onClick={() => setCanvasState({mode: CanvasMode.None, layerType: LayerType.Ellipse})} 
+                />
+
             </div>
 
 

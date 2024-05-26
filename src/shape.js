@@ -34,45 +34,6 @@ export class Shape {
       }
     }
 
-    rectangle(x,y,w,h,options,dimensions){
-      if(!this.ctx || !x || !y){
-        return;
-      }
-
-      let config= {
-        x: x,
-        y: y,
-        w: w,
-        h: h          
-      }
-
-      this.style(options)
-
-      this.ctx.save()
-      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
-        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
-        config.x += dimensions.offsetX
-        config.y += dimensions.offsetY
-
-      }
-
-      this.type = "rectangle"
-      
-      this.ctx.beginPath()
-      this.ctx.strokeRect(x,y,w,h)
-
-      this.ctx.restore()
-
-      const ele = {
-        id:this.idGen(),
-        type: this.type,
-        dimensions: config,
-        options: (options ? options : this.options),
-      }
-    
-      return ele
-    }
-
     line(x1,y1,x2,y2,options,dimensions){
       
       if(!this.ctx){
@@ -126,6 +87,88 @@ export class Shape {
       
     }
 
+    rectangle(x,y,w,h,options,dimensions){
+      if(!this.ctx || !x || !y){
+        return;
+      }
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+
+      this.style(options)
+
+      this.ctx.save()
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      this.type = "rectangle"
+      
+      this.ctx.beginPath()
+      this.ctx.strokeRect(x,y,w,h)
+
+      this.ctx.restore()
+
+      const ele = {
+        id:this.idGen(),
+        type: this.type,
+        dimensions: config,
+        options: (options ? options : this.options),
+      }
+    
+      return ele
+    }
+
+   
+    ellipse(x,y,w,h,options,dimensions){
+
+      if(!this.ctx || !x || !y){
+        return;
+      }
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+
+      this.type = "ellipse"
+      this.ctx.save()
+      
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      this.style(options)
+
+
+      this.ctx.beginPath()
+      this.ctx.ellipse((x+ (x+w))/2, (y+(y+h))/2, w/2, h/2, 0, 0,2 * Math.PI,)
+      this.ctx.stroke()
+
+      this.ctx.restore()
+      const ele = {
+        id:this.idGen(),
+        type: this.type,
+        dimensions: config,
+        options: (options ? options : this.options)
+      }
+
+      return ele
+
+    }
+
     draw(elements){
 
       elements.forEach((el, key) => {
@@ -141,6 +184,9 @@ export class Shape {
               case "line":
                 const line = this.line(el.x1,el.y1,el.x2,el.y2,el.options,el.dimensions)
                 return line  
+              case "ellipse":
+                const ellipse = this.ellipse(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions)
+                return ellipse
               default:
                 return
             }

@@ -88,4 +88,4 @@ export type CanvasState =
         mode: CanvasMode.Pencil;
       };
 
-export type shapeType = "rectangle" | "line"
+export type shapeType = "rectangle" | "line" | "ellipse"
