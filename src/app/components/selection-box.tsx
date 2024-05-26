@@ -1,46 +1,43 @@
-import { CanvasState } from "@/types/canvas";
+import { CanvasState, XYWH, shapeType } from "@/types/canvas";
 import { DrawingElement, useDrawingContext } from "../context/drawing-context"
 import { useEffect } from "react";
 import { selectionBounds } from "@/hooks/selection-bounds";
+import { Shape } from "@/shape";
 
 interface SelectionBoxProps{
-    element: DrawingElement | undefined;
-    state: CanvasState;
+    element: DrawingElement;
+    ctx: CanvasRenderingContext2D;
 }
 
-export const SelectionBox = () => {
+export const SelectionBox = (ctx:CanvasRenderingContext2D,type: shapeType,  bounds: XYWH, setSelectionBox : (element: DrawingElement) => void ) => {
 
-    const {selection,elements,canvasState} = useDrawingContext()
+    const selectionGen = new Shape(ctx)
+    const threshold = 5
 
-    useEffect(() => {
-        if(!selection.length){
-            return
-        }
+    if(type === 'line'){
         
-        console.log(selection)
-    
-        if(elements == undefined){
-            return
-        } 
-        
-    },[selection])
+        ctx.save()
+        const box1: any = selectionGen.rectangle(bounds.a! - threshold , bounds.b! - threshold , 2*threshold ,2*threshold, {
+            strokeStyle:'blue',
+            lineWidth : 2,
+            })
+        setSelectionBox(box1)
 
-    const bounds = selectionBounds(selection)
-
-    if(!bounds){
-        return
+        ctx.restore()
     }
 
-    console.log(bounds)
+    else{
 
-    return(
-        <div className="border-2 border-blue-500 absolute "
-            style={{top: bounds.y, left: bounds.x, height: bounds.h, width: bounds.w}}
-            onClick={(e) => {
-                e.preventDefault()
-                e.stopPropagation()}}
-        >
-            
-        </div>
-    )
+        ctx.save()
+        const selectRect: any = selectionGen.rectangle(bounds.x - threshold , bounds.y - threshold , bounds.width + 2*threshold , bounds.height + 2*threshold, {
+            strokeStyle:'blue',
+            lineWidth : 2,
+            })
+        setSelectionBox(selectRect)
+
+        ctx.restore()
+
+        return selectRect
+}
+
 }
