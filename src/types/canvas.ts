@@ -14,7 +14,7 @@ export enum LayerType {
     None,
     Translate,
     Line,
-    Pencil
+    Brush
   }
 
 export enum CanvasMode {
@@ -24,7 +24,7 @@ export enum CanvasMode {
     Translating,
     Inserting,
     Resizing,
-    Pencil,
+    Brush,
 }
 
 export type XYWH = {
@@ -54,7 +54,7 @@ export type CanvasState =
           | LayerType.None
           | LayerType.Translate
           | LayerType.Line
-          | LayerType.Pencil;
+          | LayerType.Brush;
       }
     | {
         mode: CanvasMode.Pressing;
@@ -79,7 +79,7 @@ export type CanvasState =
           | LayerType.Text
           | LayerType.Note
           | LayerType.Line
-          | LayerType.Pencil;
+          | LayerType.Brush;
         current?: Point | Point[] | any;
       }
     | {
@@ -88,7 +88,7 @@ export type CanvasState =
         corner: Side;
       }
     | {
-        mode: CanvasMode.Pencil;
+        mode: CanvasMode.Brush;
       };
 
 export type shapeType = "rectangle" | "line" | "ellipse"

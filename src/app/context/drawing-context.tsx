@@ -11,6 +11,7 @@ export interface DrawingElement {
     x2?: number;
     y2?: number;
     points?: Point[];
+    options: any;
     text?: string;
     dimensions: {
         x: number;
@@ -25,6 +26,7 @@ export interface DrawingElement {
 
 export interface DrawingContextType {
     elements: Map<string, DrawingElement>;
+    setElements: (el: any) => void;
     addElement: (element: DrawingElement) => void;
     removeElement: (id: string) => void;
     pause: () => void;
@@ -32,8 +34,12 @@ export interface DrawingContextType {
     updateElement: (e: string, element:DrawingElement) => void;
     canvasState: CanvasState;
     setCanvasState: (newState: CanvasState) => void;
-    selection: DrawingElement[];
-    setSelection: (elements: DrawingElement[]) => void;
+    selection: DrawingElement | DrawingElement[] | undefined;
+    setSelection: (elements: any) => void;
+    selectedTool: string;
+    setSelectedTool: (tool :string) => void;
+    color: string;
+    setColor: (color: string) => void
   }
 
 const DrawingContext = createContext<DrawingContextType | undefined>(undefined)
@@ -45,6 +51,8 @@ const DrawingProvider = ({children} : Readonly<{
     const [isPaused,setIsPaused] = useState(false)
     const [canvasState,setCanvasState] = useState<CanvasState>({mode: CanvasMode.None, layerType: LayerType.None})
     const [selection, setSelection] = useState<DrawingElement[]>([])
+    const [selectedTool, setSelectedTool] = useState('none')
+    const [color, setColor] = useState("#000000")
 
     const addElement = (element: DrawingElement | undefined) => {
         if(isPaused){
@@ -81,7 +89,8 @@ const DrawingProvider = ({children} : Readonly<{
       }
 
       return (
-        <DrawingContext.Provider value={{ elements, addElement, removeElement,pause , resume,updateElement,canvasState,setCanvasState,setSelection, selection }}>
+        <DrawingContext.Provider value={{ elements,setElements, addElement, removeElement,pause , resume,updateElement,canvasState,
+        setCanvasState,setSelection, selection, selectedTool, setSelectedTool, color, setColor }}>
           {children}
         </DrawingContext.Provider>
       );

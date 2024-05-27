@@ -12,10 +12,10 @@ import { RenderCanvas } from './render';
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection } = useDrawingContext();
+    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color } = useDrawingContext();
     const [camera, setCamera] = useState<Point>({x:0, y:0})
     const [currEle, setCurrEle] = useState<DrawingElement>()
-    const [selectionBox, setSelectionBox] = useState<DrawingElement | DrawingElement[]>()
+    // const [selection, setSelection] = useState<DrawingElement | DrawingElement[]>()
     const inputRef = useRef<HTMLInputElement>(null)
     const [currText, setCurrText] = useState<string>('')
 
@@ -26,16 +26,16 @@ export const Canvas = () => {
         
         const ctx = canvas.getContext("2d")
         const options = {
-            strokeStyle: "bevel",
             lineWidth: 3,
+            strokeStyle: color,
             lineJoin: "bevel"
           } 
           const generator = new Shape(ctx,options)
 
-          RenderCanvas(canvas, options,elements, camera, selectionBox)
-
+          RenderCanvas(canvas, options,elements, camera, selection)
+          
         const onPointerDown = (e: any) => {
-
+          e.preventDefault()
             if(!e || !ctx){
                 return
             }
@@ -45,14 +45,14 @@ export const Canvas = () => {
               const selectedEle = elementFinder({x:point.x, y:point.y}, elements)
               
               if(!selectedEle){
-                setSelection([])
-                setSelectionBox(undefined)
+                setSelection(undefined)
                 return
               }
               const type = selectedEle.type
               const newDimensions = {x:point.x, y:point.y}
 
               const {dimensions} = selectedEle
+              
 
               if(dimensions.offsetX ){
                 newDimensions.x -= dimensions.offsetX
@@ -70,7 +70,7 @@ export const Canvas = () => {
                   width: selectedEle.dimensions.w,
                   height: selectedEle.dimensions.h
                 }
-                SelectionBox(ctx,selectedEle.type, bounds, setSelectionBox)
+                SelectionBox(ctx,selectedEle.type, bounds, setSelection)
                 
               }
 
@@ -82,7 +82,7 @@ export const Canvas = () => {
                   height: selectedEle.dimensions.h
                 }
   
-                SelectionBox(ctx,selectedEle.type, bounds, setSelectionBox)
+                SelectionBox(ctx,selectedEle.type, bounds, setSelection)
 
               }
 
@@ -96,14 +96,14 @@ export const Canvas = () => {
 
 
             else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Line){
-              setSelectionBox(undefined)
+              setSelection(undefined)
               setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Line})
-              const line:any = generator.line(point.x,point.y,point.x,point.y)
+              const line:any = generator.line(point.x,point.y,point.x,point.y,options)
               setCurrEle(line)
               addElement(line)
               
             }else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Rectangle){
-              setSelectionBox(undefined)
+              setSelection(undefined)
               setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Rectangle})
               const rect:any = generator.rectangle(point.x,point.y,0,0)
               setCurrEle(rect)
@@ -111,15 +111,15 @@ export const Canvas = () => {
               
             }
             else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Ellipse){
-              setSelectionBox(undefined)
+              setSelection(undefined)
               setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Ellipse})
-              const rect:any = generator.rectangle(point.x,point.y,0,0)
-              setCurrEle(rect)
-              addElement(rect)
+              const ellipse:any = generator.ellipse(point.x,point.y,0,0)
+              setCurrEle(ellipse)
+              addElement(ellipse)
               
             }
             else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Text){
-              setSelectionBox(undefined)
+              setSelection(undefined)
               const pt = {x:e.clientX, y: e.clientY} as Point
               setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Text, current: pt})
               const text:any = generator.textBox(point.x,point.y,0,0,currText,options)
@@ -131,20 +131,21 @@ export const Canvas = () => {
               }, 0)
               
             }
-            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Pencil){
-              setSelectionBox(undefined)
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Brush){
+              setSelection(undefined)
               const points=  [{x:point.x, y: point.y}]
 
-              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Pencil, current: points})
-              const text:any = generator.brush(point.x,point.y,5,5,points,options)
-              setCurrEle(text)
-              addElement(text)
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Brush, current: points})
+              const brush:any = generator.brush(point.x,point.y,5,5,points,options)
+              setCurrEle(brush)
+              addElement(brush)
               
             }
             
         }
 
         const onPointerUp = (e: any) => {
+          e.preventDefault()
             if(!currEle){
                 return
             }
@@ -170,19 +171,19 @@ export const Canvas = () => {
             }
             else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text){
             }
-            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Pencil){
+            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Brush){
               setCurrEle(undefined)
-              setCanvasState({mode: CanvasMode.None, layerType: LayerType.Pencil})
+              setCanvasState({mode: CanvasMode.None, layerType: LayerType.Brush})
             }
-            else{
+            // else{
 
-              setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
-            }
+            //   setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
+            // }
 
         }
 
         const onPointerMove = (e: any) => {
-          
+          e.preventDefault()
           if(!currEle || !ctx){
             return
           }
@@ -297,7 +298,7 @@ export const Canvas = () => {
                   height: currEle.dimensions.h
                 }
               
-                const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelectionBox)
+                const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelection)
 
                 RenderCanvas(canvas, options,elements, camera,selectRect)
 
@@ -311,7 +312,7 @@ export const Canvas = () => {
                   height: currEle.dimensions.h
                 }
               
-              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelectionBox)
+              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelection)
             
               RenderCanvas(canvas, options,elements, camera, selectRect)
 
@@ -336,7 +337,7 @@ export const Canvas = () => {
                 height: currEle.dimensions.h
               }
 
-              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelectionBox)
+              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelection)
 
               ctx.restore()
               
@@ -346,26 +347,25 @@ export const Canvas = () => {
           }
 
           if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Line) {
-            const newRect: any = generator.line(currEle.dimensions.x,currEle.dimensions.y, point.x,  point.y)
-            updateElement(currEle.id, newRect)
+            const newLine: any = generator.line(currEle.dimensions.x,currEle.dimensions.y, point.x,  point.y,currEle.options,null,currEle.id)
+            updateElement(currEle.id, newLine)
 
             RenderCanvas(canvas, options,elements, camera)
 
           }
           else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Rectangle){
-            const newRect: any = generator.rectangle(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y))
+            const newRect: any = generator.rectangle(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y),currEle.options,null,currEle.id)
             updateElement(currEle.id, newRect)
-
             RenderCanvas(canvas, options,elements, camera)
           }
           else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Ellipse) {
-            const newEllipse: any = generator.ellipse(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y))
+            const newEllipse: any = generator.ellipse(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y), currEle.options, null, currEle.id)
             updateElement(currEle.id, newEllipse)
 
             RenderCanvas(canvas, options,elements, camera)
 
           }
-          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Pencil){
+          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Brush){
             
             let newPts = canvasState.current as Point[]
             const currPt = {x:point.x, y: point.y}
@@ -391,17 +391,15 @@ export const Canvas = () => {
             currEle.dimensions.x = Math.min(currEle.dimensions.x, point.x)
             currEle.dimensions.y = Math.min(currEle.dimensions.y, point.y)
 
-            const newSvg = generator.brush(currEle.dimensions.x, currEle.dimensions.y, currEle.dimensions.w, currEle.dimensions.h, canvasState.current, options)
+            const newSvg = generator.brush(currEle.dimensions.x, currEle.dimensions.y, currEle.dimensions.w, currEle.dimensions.h, canvasState.current, currEle.options, null, currEle.id)
             updateElement(currEle.id, newSvg)
 
             RenderCanvas(canvas, options,elements, camera)
           }
-
-          
-
         }
 
         const onKeyDown = (e: any) => {
+          
           if(!(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle)){
             return
           }
@@ -468,7 +466,7 @@ export const Canvas = () => {
 
             }
 
-            <canvas className='bg-blue-50' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
+            <canvas className='bg-blue-50 touch-none' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
         </>
     );
 };

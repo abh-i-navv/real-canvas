@@ -36,7 +36,7 @@ export class Shape {
       }
     }
 
-    line(x1,y1,x2,y2,options,dimensions){
+    line(x1,y1,x2,y2,options,dimensions,id){
       
       if(!this.ctx){
         return
@@ -75,7 +75,7 @@ export class Shape {
       this.ctx.restore()
 
       const ele =  {
-        id:this.idGen(),
+        id: id || this.idGen(),
         x1:this.x1,
         y1: this.y1,
         x2:this.x2,
@@ -89,7 +89,7 @@ export class Shape {
       
     }
 
-    rectangle(x,y,w,h,options,dimensions){
+    rectangle(x,y,w,h,options,dimensions, id){
       if(!this.ctx || !x || !y){
         return;
       }
@@ -119,7 +119,7 @@ export class Shape {
       this.ctx.restore()
 
       const ele = {
-        id:this.idGen(),
+        id: id || this.idGen(),
         type: this.type,
         dimensions: config,
         options: (options ? options : this.options),
@@ -129,7 +129,7 @@ export class Shape {
     }
 
    
-    ellipse(x,y,w,h,options,dimensions){
+    ellipse(x,y,w,h,options,dimensions,id){
 
       if(!this.ctx || !x || !y){
         return;
@@ -161,7 +161,7 @@ export class Shape {
 
       this.ctx.restore()
       const ele = {
-        id:this.idGen(),
+        id: id || this.idGen(),
         type: this.type,
         dimensions: config,
         options: (options ? options : this.options)
@@ -171,7 +171,7 @@ export class Shape {
 
     }
 
-    textBox(x,y,w,h,text,options,dimensions){
+    textBox(x,y,w,h,text,options,dimensions,id){
       this.type = "text"
       this.text = text
       this.x = x
@@ -206,7 +206,7 @@ export class Shape {
       this.ctx.restore()
 
       const ele = {
-        id:this.idGen(),
+        id: id || this.idGen(),
         text: this.text,
         type : this.type,
         dimensions: config,
@@ -216,7 +216,7 @@ export class Shape {
       return ele
     }
 
-    brush(x,y,w,h,points,options,dimensions){
+    brush(x,y,w,h,points,options,dimensions,id){
 
       let config= {
         x: x,
@@ -247,7 +247,7 @@ export class Shape {
       this.ctx.fill(p)
 
       const ele ={
-        id:this.idGen(),
+        id: id || this.idGen(),
         points: points,
         type: this.type,
         dimensions: config,
@@ -260,6 +260,9 @@ export class Shape {
 
 
     draw(elements){
+      if(!elements || elements.size <=0 ){
+        return
+      }
 
       elements.forEach((el, key) => {
         if(!el){
@@ -269,19 +272,19 @@ export class Shape {
     
             switch(shape){
               case "rectangle":
-                const rect = this.rectangle(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions)
+                const rect = this.rectangle(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions,el.id)
                 return rect
               case "line":
-                const line = this.line(el.x1,el.y1,el.x2,el.y2,el.options,el.dimensions)
+                const line = this.line(el.x1,el.y1,el.x2,el.y2,el.options,el.dimensions, el.id)
                 return line  
               case "ellipse":
-                const ellipse = this.ellipse(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions)
+                const ellipse = this.ellipse(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions,el.id)
                 return ellipse
               case "text":
-                const text = this.textBox(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.text,el.options,el.dimensions)
+                const text = this.textBox(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.text,el.options,el.dimensions,el.id)
                 return text
                 case "brush":
-                  const brush = this.brush(el.dimensions.x, el.dimensions.y, el.dimensions.w, el.dimensions.h, el.points, el.options,el.dimensions)
+                  const brush = this.brush(el.dimensions.x, el.dimensions.y, el.dimensions.w, el.dimensions.h, el.points, el.options,el.dimensions,el.id)
                   return brush
               default:
                 return
