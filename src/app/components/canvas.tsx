@@ -12,7 +12,7 @@ import { RenderCanvas } from './render';
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color } = useDrawingContext();
+    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color, strokeWidth } = useDrawingContext();
     const [camera, setCamera] = useState<Point>({x:0, y:0})
     const [currEle, setCurrEle] = useState<DrawingElement>()
     // const [selection, setSelection] = useState<DrawingElement | DrawingElement[]>()
@@ -26,7 +26,7 @@ export const Canvas = () => {
         
         const ctx = canvas.getContext("2d")
         const options = {
-            lineWidth: 3,
+            lineWidth: strokeWidth,
             strokeStyle: color,
             lineJoin: "bevel"
           } 
@@ -43,12 +43,18 @@ export const Canvas = () => {
             
             if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.None){
               const selectedEle = elementFinder({x:point.x, y:point.y}, elements)
+              setSelection(undefined)
               
               if(!selectedEle){
                 setSelection(undefined)
                 return
               }
               const type = selectedEle.type
+
+              if(type === 'eraser'){
+                return
+              }
+
               const newDimensions = {x:point.x, y:point.y}
 
               const {dimensions} = selectedEle
@@ -141,6 +147,17 @@ export const Canvas = () => {
               addElement(brush)
               
             }
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Eraser){
+              setSelection(undefined)
+              const points=  [{x:point.x, y: point.y}]
+
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Eraser, current: points})
+              options.strokeStyle = "#ffffff"
+              const brush:any = generator.eraser(point.x,point.y,5,5,points,options)
+              setCurrEle(brush)
+              addElement(brush)
+              
+            }
             
         }
 
@@ -174,6 +191,10 @@ export const Canvas = () => {
             else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Brush){
               setCurrEle(undefined)
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.Brush})
+            }
+            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Eraser){
+              setCurrEle(undefined)
+              setCanvasState({mode: CanvasMode.None, layerType: LayerType.Eraser})
             }
             // else{
 
@@ -396,6 +417,37 @@ export const Canvas = () => {
 
             RenderCanvas(canvas, options,elements, camera)
           }
+          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Eraser){
+            
+            let newPts = canvasState.current as Point[]
+            const currPt = {x:point.x, y: point.y}
+
+            newPts = [...newPts, currPt]
+            canvasState.current = newPts
+
+            let minX = Number.MAX_SAFE_INTEGER
+            let minY = Number.MAX_SAFE_INTEGER
+            let maxX = Number.MIN_SAFE_INTEGER
+            let maxY = Number.MIN_SAFE_INTEGER
+
+            for(let i =0; i<newPts.length; i++){
+              minX = Math.min(newPts[i].x, minX)
+              maxX = Math.max(newPts[i].x, maxX)
+              minY = Math.min(newPts[i].y, minY)
+              maxY = Math.max(newPts[i].y, maxY)
+            }
+
+            currEle.dimensions.w = Math.abs(minX-maxX)
+            currEle.dimensions.h = Math.abs(minY-maxY)
+
+            currEle.dimensions.x = Math.min(currEle.dimensions.x, point.x)
+            currEle.dimensions.y = Math.min(currEle.dimensions.y, point.y)
+
+            const newSvg = generator.eraser(currEle.dimensions.x, currEle.dimensions.y, currEle.dimensions.w, currEle.dimensions.h, canvasState.current, currEle.options, null, currEle.id)
+            updateElement(currEle.id, newSvg)
+
+            RenderCanvas(canvas, options,elements, camera)
+          }
         }
 
         const onKeyDown = (e: any) => {
@@ -431,7 +483,7 @@ export const Canvas = () => {
             document.removeEventListener('keydown', onKeyDown)
         }
         
-    }, [elements, dimensions,canvasState,camera,currText]);
+    }, [elements, dimensions,canvasState,camera,currText,color,strokeWidth,selection]);
 
     const onWheel = useCallback((e: React.WheelEvent) => {
         setCamera((camera) => ({
@@ -460,13 +512,13 @@ export const Canvas = () => {
             <ToolBar canvasState={canvasState} setCanvasState={setCanvasState}/>
             {
             canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle && canvasState.current as Point &&
-              <input autoComplete='off' ref={inputRef} id='text-box' className={` bg-transparent w-auto fixed h-10 focus:outline-none font-serif text-4xl`}
-              style={{top: canvasState.current!.y, left:canvasState.current!.x , width: currText.length > 21 ? currText.length*20 : '394px'}}
+              <input autoComplete='off' ref={inputRef} id='text-box' className={`bg-transparent w-auto fixed h-10 focus:outline-none font-serif text-4xl`}
+              style={{color: color, top: canvasState.current!.y, left:canvasState.current!.x , width: currText.length > 21 ? currText.length*20 : '394px'}}
               onChange={(e) => {setCurrText(e.target.value)}} />
 
             }
 
-            <canvas className='bg-blue-50 touch-none' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
+            <canvas className='bg-white touch-none' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
         </>
     );
 };

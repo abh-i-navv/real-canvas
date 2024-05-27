@@ -14,7 +14,8 @@ export enum LayerType {
     None,
     Translate,
     Line,
-    Brush
+    Brush,
+    Eraser
   }
 
 export enum CanvasMode {
@@ -54,7 +55,8 @@ export type CanvasState =
           | LayerType.None
           | LayerType.Translate
           | LayerType.Line
-          | LayerType.Brush;
+          | LayerType.Brush
+          | LayerType.Eraser;
       }
     | {
         mode: CanvasMode.Pressing;
@@ -79,7 +81,8 @@ export type CanvasState =
           | LayerType.Text
           | LayerType.Note
           | LayerType.Line
-          | LayerType.Brush;
+          | LayerType.Brush
+          | LayerType.Eraser;
         current?: Point | Point[] | any;
       }
     | {

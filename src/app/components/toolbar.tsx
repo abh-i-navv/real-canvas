@@ -1,10 +1,11 @@
 import { cn } from "@/lib/utils";
 import { CanvasMode, CanvasState, LayerType } from "@/types/canvas";
-import { Circle, Minus, MousePointer2, Square, Type, Pencil, Undo2, Redo2, Brush, Cross, Trash2 } from "lucide-react";
+import { Circle, Minus, MousePointer2, Square, Type, Pencil, Undo2, Redo2, Brush, Cross, Trash2, Eraser, Menu, Settings } from "lucide-react";
 import { DrawingElement, useDrawingContext } from "../context/drawing-context";
 import { Sidebar } from "./sidebar";
 import { useEffect, useState } from "react";
 import { ColorPicker } from "./color-picker";
+import { ContextMenu } from "./context-menu";
 
 interface ToolBarProps {
     canvasState: CanvasState;
@@ -57,7 +58,7 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
 
     return(
         <>
-        {/* <Sidebar canvasState={canvasState} setCanvasState={setCanvasState} Clear={Clear}/> */}
+        <Sidebar canvasState={canvasState} setCanvasState={setCanvasState} Clear={Clear}/>
         <div className="hidden lg:flex absolute top-0 border-2 border-[#322560] z-10 bg-[#fafafa] rounded-xl mt-2 shadow-md">
             <div className="h-full flex justify-center items-center">
                 <div className={cn("m-2 p-2 hover:bg-[#b3aad5]", ( selectedTool === 'none' || (canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.None)) && "bg-[#b3aad5]")}
@@ -73,8 +74,17 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
                     handlePointerDown(e,"brush", {mode: CanvasMode.None, layerType: LayerType.Brush})
                 }}
             >
-
                 <Brush />
+                {/* <ContextMenu Icon={Brush}/> */}
+            </div>
+
+            <div className={cn("m-2 p-2 hover:bg-[#b3aad5]", ((canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Eraser) || selectedTool === 'eraser') &&  "bg-[#b3aad5]")}
+                onPointerDown={(e) => {
+                    handlePointerDown(e,"eraser", {mode: CanvasMode.None, layerType: LayerType.Eraser})
+                }}
+            >
+                <Eraser />
+                {/* <ContextMenu Icon={Eraser}/> */}
             </div>
 
             <div onPointerDown={(e) => {
@@ -83,7 +93,9 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
                     setSelectedTool('line')
                 }}
                 className={cn("m-2 p-2 hover:bg-[#b3aad5]", ((canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Line) || selectedTool === 'line') && "bg-[#b3aad5]")}>
+                
                 <Minus />
+                {/* <ContextMenu Icon={Minus}/> */}
             </div>
 
             <div onPointerDown={(e) => {
@@ -92,7 +104,9 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
                     setSelectedTool('rectangle')
                 }} 
                 className={cn("m-2 p-2 hover:bg-[#b3aad5]", ((canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Rectangle) || selectedTool === 'rectangle') && "bg-[#b3aad5]")} >
+                
                 <Square />
+                {/* <ContextMenu Icon={Square}/> */}
             </div>
 
             <div onPointerDown={(e) => {
@@ -101,7 +115,9 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
                     setSelectedTool('ellipse')
                 }}
                 className={cn("m-2 p-2 hover:bg-[#b3aad5]", ((canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Ellipse) || selectedTool === 'ellipse') && "bg-[#b3aad5]")} >
+                
                 <Circle />
+                {/* <ContextMenu Icon={Circle}/> */}
             </div>
 
             <div onPointerDown={(e) => {
@@ -118,11 +134,12 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
             >
             <Trash2/>
             </div>
-            <div onPointerDown={(e) => {
+            {/* <div className="border-none" 
+                onPointerDown={(e) => {
                 e.preventDefault()
             }}>
-            <ColorPicker />
-            </div>
+                <ColorPicker />
+            </div> */}
 
             </div>
 
@@ -137,8 +154,8 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
         </div>
         </div>
 
-        <div className="top-2 left-2">
-            
+        <div className="top-2 left-2 m-2 p-2 absolute">
+            <ContextMenu Icon={Settings}/>
         </div>
         
         </>
