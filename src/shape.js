@@ -1,3 +1,5 @@
+import { getPathData } from "./lib/utils";
+
 export class Shape {
 
     idGen(){
@@ -34,46 +36,7 @@ export class Shape {
       }
     }
 
-    rectangle(x,y,w,h,options,dimensions){
-      if(!this.ctx || !x || !y){
-        return;
-      }
-
-      let config= {
-        x: x,
-        y: y,
-        w: w,
-        h: h          
-      }
-
-      this.style(options)
-
-      this.ctx.save()
-      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
-        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
-        config.x += dimensions.offsetX
-        config.y += dimensions.offsetY
-
-      }
-
-      this.type = "rectangle"
-      
-      this.ctx.beginPath()
-      this.ctx.strokeRect(x,y,w,h)
-
-      this.ctx.restore()
-
-      const ele = {
-        id:this.idGen(),
-        type: this.type,
-        dimensions: config,
-        options: (options ? options : this.options),
-      }
-    
-      return ele
-    }
-
-    line(x1,y1,x2,y2,options,dimensions){
+    line(x1,y1,x2,y2,options,dimensions,id){
       
       if(!this.ctx){
         return
@@ -112,7 +75,7 @@ export class Shape {
       this.ctx.restore()
 
       const ele =  {
-        id:this.idGen(),
+        id: id || this.idGen(),
         x1:this.x1,
         y1: this.y1,
         x2:this.x2,
@@ -126,7 +89,221 @@ export class Shape {
       
     }
 
+    rectangle(x,y,w,h,options,dimensions, id){
+      if(!this.ctx || !x || !y){
+        return;
+      }
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+
+      this.style(options)
+
+      this.ctx.save()
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      this.type = "rectangle"
+      
+      this.ctx.beginPath()
+      this.ctx.strokeRect(x,y,w,h)
+
+      this.ctx.restore()
+
+      const ele = {
+        id: id || this.idGen(),
+        type: this.type,
+        dimensions: config,
+        options: (options ? options : this.options),
+      }
+    
+      return ele
+    }
+
+   
+    ellipse(x,y,w,h,options,dimensions,id){
+
+      if(!this.ctx || !x || !y){
+        return;
+      }
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+
+      this.type = "ellipse"
+      this.ctx.save()
+      
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      this.style(options)
+
+
+      this.ctx.beginPath()
+      this.ctx.ellipse((x+ (x+w))/2, (y+(y+h))/2, w/2, h/2, 0, 0,2 * Math.PI,)
+      this.ctx.stroke()
+
+      this.ctx.restore()
+      const ele = {
+        id: id || this.idGen(),
+        type: this.type,
+        dimensions: config,
+        options: (options ? options : this.options)
+      }
+
+      return ele
+
+    }
+
+    textBox(x,y,w,h,text,options,dimensions,id){
+      this.type = "text"
+      this.text = text
+      this.x = x
+      this.y = y
+
+      w = w ? w : text.length*100
+
+      let config= {
+        x: x,
+        y: y,
+        w: w ,
+        h: h || 40       
+      }
+
+      this.ctx.save()
+      if(options){
+        this.ctx.fillStyle = options.strokeStyle
+      }
+
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      this.ctx.textBaseLine = "top"
+      this.ctx.font = "48px serif"
+      
+      this.ctx.fillText(text,x,y+40,w)
+      
+      this.ctx.restore()
+
+      const ele = {
+        id: id || this.idGen(),
+        text: this.text,
+        type : this.type,
+        dimensions: config,
+        options: (options ? options : this.options)
+      }
+
+      return ele
+    }
+
+    brush(x,y,w,h,points,options,dimensions,id){
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+      
+      this.type = "brush"
+      const path = getPathData(points,options)
+
+      let p = new Path2D(path)
+      this.ctx.save()
+
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      // this.style(options)
+      if(options){
+        this.ctx.fillStyle = options.strokeStyle
+      }
+      
+
+      this.ctx.fill(p)
+
+      const ele ={
+        id: id || this.idGen(),
+        points: points,
+        type: this.type,
+        dimensions: config,
+        options: (options ? options : this.options)
+      }
+      this.ctx.restore()
+      
+      return ele
+    }
+    eraser(x,y,w,h,points,options,dimensions,id){
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+      
+      this.type = "eraser"
+      const path = getPathData(points,options)
+
+      let p = new Path2D(path)
+      this.ctx.save()
+
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      // this.style(options)
+      if(options){
+        this.ctx.fillStyle = options.strokeStyle
+      }
+      
+
+      this.ctx.fill(p)
+
+      const ele ={
+        id: id || this.idGen(),
+        points: points,
+        type: this.type,
+        dimensions: config,
+        options: (options ? options : this.options)
+      }
+      this.ctx.restore()
+      
+      return ele
+    }
+
+
     draw(elements){
+      if(!elements || elements.size <=0 ){
+        return
+      }
 
       elements.forEach((el, key) => {
         if(!el){
@@ -136,49 +313,30 @@ export class Shape {
     
             switch(shape){
               case "rectangle":
-                const rect = this.rectangle(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions)
+                const rect = this.rectangle(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions,el.id)
                 return rect
               case "line":
-                const line = this.line(el.x1,el.y1,el.x2,el.y2,el.options,el.dimensions)
+                const line = this.line(el.x1,el.y1,el.x2,el.y2,el.options,el.dimensions, el.id)
                 return line  
+              case "ellipse":
+                const ellipse = this.ellipse(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.options,el.dimensions,el.id)
+                return ellipse
+              case "text":
+                const text = this.textBox(el.dimensions.x,el.dimensions.y,el.dimensions.w,el.dimensions.h,el.text,el.options,el.dimensions,el.id)
+                return text
+              case "brush":
+                const brush = this.brush(el.dimensions.x, el.dimensions.y, el.dimensions.w, el.dimensions.h, el.points, el.options,el.dimensions,el.id)
+                return brush
+              case "eraser":
+                const eraser = this.eraser(el.dimensions.x, el.dimensions.y, el.dimensions.w, el.dimensions.h, el.points, el.options,el.dimensions,el.id)
+              return eraser
+              
               default:
                 return
             }
 
 
       });
-
-      // elements.map((el, i) => {
-      //   if(!el){
-      //     return
-      //   }
-      //   const shape = el.type
-
-      //   switch(shape){
-      //     case "rectangle":
-      //       const rect = this.rectangle(el.x1,el.y1,el.x2,el.y2,el.options)
-      //       return rect
-      //     case "line":
-      //       return this.line(el.x1,el.y1,el.x2,el.y2,el.options)
-      //     case "circle":
-      //       return this.circle(el.x1,el.y1,el.radius,el.options)
-      //     case "ellipse":
-      //       return this.ellipse(el.x1,el.y1,el.x2,el.y2,el.options)
-      //     case "polygon":
-      //       return this.polygon(el.points,el.options)
-      //     case "svg":
-      //       this.ctx.save()
-      //       const ele = this.svg(el.path,el.pointsArr,el.options,el.resize)
-      //       this.ctx.restore()
-      //       return ele
-      //     case "text":
-      //       return this.textBox(el.x,el.y,el.text,el.options,el.width)
-
-      //     default:
-      //       return
-      //   }
-
-      // })
     }
 
     move(element, x, y){
@@ -198,5 +356,6 @@ export class Shape {
 
       this.ctx.restore()
     }
+
 
 }

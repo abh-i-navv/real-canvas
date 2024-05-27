@@ -13,8 +13,10 @@ export default function Home() {
     height:200}
 
   return (
-    <main className="h-full w-full flex justify-center items-center overflow-y-scroll no-scrollbar overflow-hidden">
-      <Canvas />
+    <main >
+      <div className="h-full w-full flex justify-center items-center overflow-y-scroll no-scrollbar overflow-hidden">
+        <Canvas />
+      </div>
     </main>
   );
 }

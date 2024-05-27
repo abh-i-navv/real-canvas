@@ -1,53 +1,17 @@
 import { cn } from "@/lib/utils";
 import { CanvasMode, CanvasState, LayerType } from "@/types/canvas";
-import { Circle, Minus, MousePointer2, Square, Type, Pencil, Undo2, Redo2, Brush, Cross, Trash2, Eraser, Menu, Settings } from "lucide-react";
-import { DrawingElement, useDrawingContext } from "../context/drawing-context";
-import { Sidebar } from "./sidebar";
-import { useEffect, useState } from "react";
-import { ColorPicker } from "./color-picker";
-import { ContextMenu } from "./context-menu";
+import { Circle, Minus, MousePointer2, Square, Type, Pencil, Brush, Trash2, Eraser } from "lucide-react";
+import { useDrawingContext } from "../context/drawing-context";
 
 interface ToolBarProps {
     canvasState: CanvasState;
     setCanvasState: (state: CanvasState) => void;
+    Clear: () => void
 }
 
-export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
+export const Sidebar = ({canvasState,setCanvasState, Clear}: ToolBarProps) => {
 
-    const {selectedTool, setSelectedTool,elements,removeElement,addElement, setSelection, setElements} = useDrawingContext()
-    const [history, setHistory] = useState<any>([])
-    const [color, setColor] = useState("#000")
-
-    const Undo = () => {
-        const n = elements.size
-
-        if(n <=0 ){
-            return
-        }
-        const getLastValueInMap = (elements: any) => {
-            return [...elements][n-1][1]}
-        getLastValueInMap(elements)
-        const lastEle = getLastValueInMap(elements);
-        setSelection(undefined)
-        
-        setHistory((history: any) => [...history, lastEle])
-        removeElement(lastEle.id)        
-        
-    }
-
-    const Redo = () => {
-        if(history.length){
-            const lastEle = history.pop()
-            addElement(lastEle!)
-        }
-    }
-
-    const Clear = () => {
-        let array = Array.from(elements, ([name, value]) => (value))
-        setHistory(array)
-        setElements(new Map())
-        setSelection(undefined)
-    }
+    const {selectedTool, setSelectedTool, setSelection} = useDrawingContext()
 
     const handlePointerDown = (e: any, tool: string, canvasState: CanvasState) => {
         e.preventDefault()
@@ -57,10 +21,8 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
     }
 
     return(
-        <>
-        <Sidebar canvasState={canvasState} setCanvasState={setCanvasState} Clear={Clear}/>
-        <div className="hidden lg:flex absolute top-0 border-2 border-[#322560] z-10 bg-[#fafafa] rounded-xl mt-2 shadow-md">
-            <div className="h-full flex justify-center items-center">
+        <div className="flex border-[#322560] border-2 mt-2 shadow-md rounded-lg lg:hidden shadow:md absolute left-0 h-auto w-16 ">
+            <div className="h-full flex flex-col justify-center items-center">
                 <div className={cn("m-2 p-2 hover:bg-[#b3aad5]", ( selectedTool === 'none' || (canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.None)) && "bg-[#b3aad5]")}
                     onPointerDown={(e) => {
                         handlePointerDown(e,"none", {mode: CanvasMode.None, layerType: LayerType.None})
@@ -143,22 +105,8 @@ export const ToolBar = ({canvasState,setCanvasState}: ToolBarProps) => {
 
             </div>
 
-        </div>
-        <div className='flex absolute top-0 right-0 ' >
-        <div className='m-2 border-[#322560] border-2 cursor-pointer rounded-lg hover:bg-[#b3aad5] z-10' onPointerDown={Undo} >
-            <Undo2 className='' size={30}/>
-        </div>
 
-        <div className='m-2 cursor-pointer border-[#322560] border-2 rounded-lg hover:bg-[#b3aad5] z-10' onPointerDown={Redo}>
-            <Redo2 className='' size={30}/>
         </div>
-        </div>
-
-        <div className="top-2 left-2 m-2 p-2 absolute">
-            <ContextMenu Icon={Settings}/>
-        </div>
-        
-        </>
     )
 
 }

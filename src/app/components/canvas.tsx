@@ -3,19 +3,21 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {Shape} from "../../shape"
 import { DrawingElement, useDrawingContext } from '../context/drawing-context';
-import { CanvasMode, LayerType, Point, shapeType } from '@/types/canvas';
+import { CanvasMode, LayerType, Point } from '@/types/canvas';
 import { ToolBar } from './toolbar';
-import { elementFinder, pointerEventToCanvasPoint } from '@/lib/utils';
+import { elementFinder, getPathData, pointerEventToCanvasPoint } from '@/lib/utils';
 import { SelectionBox } from './selection-box';
 import { RenderCanvas } from './render';
 
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection } = useDrawingContext();
+    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color, strokeWidth } = useDrawingContext();
     const [camera, setCamera] = useState<Point>({x:0, y:0})
     const [currEle, setCurrEle] = useState<DrawingElement>()
-    const [selectionBox, setSelectionBox] = useState<DrawingElement | DrawingElement[]>()
+    // const [selection, setSelection] = useState<DrawingElement | DrawingElement[]>()
+    const inputRef = useRef<HTMLInputElement>(null)
+    const [currText, setCurrText] = useState<string>('')
 
     useEffect(() => {
         const canvas = canvasRef.current;
@@ -24,22 +26,16 @@ export const Canvas = () => {
         
         const ctx = canvas.getContext("2d")
         const options = {
-            strokeStyle: "bevel",
-            lineWidth: 5,
+            lineWidth: strokeWidth,
+            strokeStyle: color,
             lineJoin: "bevel"
           } 
           const generator = new Shape(ctx,options)
+
+          RenderCanvas(canvas, options,elements, camera, selection)
           
-          // ctx?.clearRect(0,0,canvas.width,canvas.height)
-          // ctx?.save()
-          // ctx?.translate(camera.x,camera.y)
-          // generator.draw(elements)
-          // generator.draw([selectionBox])
-          // ctx?.restore()
-          RenderCanvas(canvas, options,elements, camera, selectionBox)
-
         const onPointerDown = (e: any) => {
-
+          e.preventDefault()
             if(!e || !ctx){
                 return
             }
@@ -47,16 +43,22 @@ export const Canvas = () => {
             
             if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.None){
               const selectedEle = elementFinder({x:point.x, y:point.y}, elements)
+              setSelection(undefined)
               
               if(!selectedEle){
-                setSelection([])
-                setSelectionBox(undefined)
+                setSelection(undefined)
                 return
               }
-              const type = selectedEle.type as shapeType
+              const type = selectedEle.type
+
+              if(type === 'eraser'){
+                return
+              }
+
               const newDimensions = {x:point.x, y:point.y}
 
               const {dimensions} = selectedEle
+              
 
               if(dimensions.offsetX ){
                 newDimensions.x -= dimensions.offsetX
@@ -67,14 +69,14 @@ export const Canvas = () => {
 
               if(type === 'line'){
                 const bounds = {
-                  x: selectedEle.x1,
-                  y: selectedEle.y1,
-                  a: selectedEle.x2 + (dimensions.offsetX || 0),
-                  b: selectedEle.y2 + (dimensions.offsetY || 0),
+                  x: selectedEle.x1!,
+                  y: selectedEle.y1!,
+                  a: selectedEle.x2! + (dimensions.offsetX || 0),
+                  b: selectedEle.y2! + (dimensions.offsetY || 0),
                   width: selectedEle.dimensions.w,
                   height: selectedEle.dimensions.h
                 }
-                SelectionBox(ctx,selectedEle.type, bounds, setSelectionBox)
+                SelectionBox(ctx,selectedEle.type, bounds, setSelection)
                 
               }
 
@@ -86,20 +88,12 @@ export const Canvas = () => {
                   height: selectedEle.dimensions.h
                 }
   
-                SelectionBox(ctx,selectedEle.type, bounds, setSelectionBox)
+                SelectionBox(ctx,selectedEle.type, bounds, setSelection)
 
               }
 
               setCurrEle(selectedEle)
-              // const newSelection = [...selection]
-
-              // const existingCheck = newSelection.find((el) => el.id === selectedEle.id)
               
-              // if(!existingCheck){
-              //   newSelection.push(selectedEle)
-              //   setSelection(newSelection)
-              // }
-
               const cloneEle = structuredClone(selectedEle)
 
               setCanvasState({mode: CanvasMode.Translating, current: newDimensions, id: selectedEle?.id,element: cloneEle})
@@ -107,26 +101,68 @@ export const Canvas = () => {
             }
 
 
-            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Rectangle){
-              setSelectionBox(undefined)
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Line){
+              setSelection(undefined)
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Line})
+              const line:any = generator.line(point.x,point.y,point.x,point.y,options)
+              setCurrEle(line)
+              addElement(line)
+              
+            }else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Rectangle){
+              setSelection(undefined)
               setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Rectangle})
               const rect:any = generator.rectangle(point.x,point.y,0,0)
               setCurrEle(rect)
               addElement(rect)
               
             }
-            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Line){
-              setSelectionBox(undefined)
-              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Line})
-              const line:any = generator.line(point.x,point.y,point.x,point.y)
-              setCurrEle(line)
-              addElement(line)
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Ellipse){
+              setSelection(undefined)
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Ellipse})
+              const ellipse:any = generator.ellipse(point.x,point.y,0,0)
+              setCurrEle(ellipse)
+              addElement(ellipse)
+              
+            }
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Text){
+              setSelection(undefined)
+              const pt = {x:e.clientX, y: e.clientY} as Point
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Text, current: pt})
+              const text:any = generator.textBox(point.x,point.y,0,0,currText,options)
+              setCurrEle(text)
+              addElement(text)
+
+              setTimeout(() => {
+                inputRef.current?.focus();
+              }, 0)
+              
+            }
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Brush){
+              setSelection(undefined)
+              const points=  [{x:point.x, y: point.y}]
+
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Brush, current: points})
+              const brush:any = generator.brush(point.x,point.y,5,5,points,options)
+              setCurrEle(brush)
+              addElement(brush)
+              
+            }
+            else if(canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.Eraser){
+              setSelection(undefined)
+              const points=  [{x:point.x, y: point.y}]
+
+              setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Eraser, current: points})
+              options.strokeStyle = "#ffffff"
+              const brush:any = generator.eraser(point.x,point.y,5,5,points,options)
+              setCurrEle(brush)
+              addElement(brush)
               
             }
             
         }
 
         const onPointerUp = (e: any) => {
+          e.preventDefault()
             if(!currEle){
                 return
             }
@@ -140,29 +176,41 @@ export const Canvas = () => {
               setCurrEle(undefined)
 
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.Line})
+            }else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Ellipse){
+              setCurrEle(undefined)
+
+              setCanvasState({mode: CanvasMode.None, layerType: LayerType.Ellipse})
             }
             else if(canvasState.mode === CanvasMode.Translating) {
-              console.log(canvasState)
               RenderCanvas(canvas,options,elements,camera)
-              console.log(elements)
 
               setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
             }
-            else{
-
-              setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
+            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text){
             }
+            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Brush){
+              setCurrEle(undefined)
+              setCanvasState({mode: CanvasMode.None, layerType: LayerType.Brush})
+            }
+            else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Eraser){
+              setCurrEle(undefined)
+              setCanvasState({mode: CanvasMode.None, layerType: LayerType.Eraser})
+            }
+            // else{
+
+            //   setCanvasState({mode: CanvasMode.None, layerType: LayerType.None})
+            // }
 
         }
 
         const onPointerMove = (e: any) => {
-          
+          e.preventDefault()
           if(!currEle || !ctx){
             return
           }
 
           const point = pointerEventToCanvasPoint(e,camera)
-          const type = currEle.type as shapeType
+          const type = currEle.type
 
           if(canvasState.mode === CanvasMode.None){
 
@@ -179,17 +227,23 @@ export const Canvas = () => {
               offsetY = currEle.dimensions.offsetY
             }
             
-            if( type !== 'line' && Math.abs(point.y - currEle.dimensions.y - offsetY - currEle.dimensions.h ) <= threshold && point.x >= currEle.dimensions.x + offsetX && point.x <= currEle.dimensions.w + currEle.dimensions.x +offsetX){
+            if( (type !== 'line') && Math.abs(point.y - currEle.dimensions.y - offsetY - currEle.dimensions.h ) <= threshold && point.x >= currEle.dimensions.x + offsetX && point.x <= currEle.dimensions.w + currEle.dimensions.x +offsetX){
+              if(type === 'text' || type === 'brush'){
+                return
+              }
               e.target.style.cursor = "ns-resize"
 
             }
             else if(type !== 'line' && Math.abs(point.x - (currEle.dimensions.w + currEle.dimensions.x + offsetX)) <= threshold && point.y >= currEle.dimensions.y + offsetY && point.y <= currEle.dimensions.y + offsetY + currEle.dimensions.h){
+              if(type === 'text' || type === 'brush'){
+                return
+              }
               e.target.style.cursor = "ew-resize"
             }
-            else if(type === 'line' && Math.abs(point.x - (currEle.x2 + offsetX)) <= threshold && Math.abs(point.y - (currEle.y2 + offsetY)) <= threshold){
+            else if(type === 'line' && Math.abs(point.x - (currEle.x2! + offsetX)) <= threshold && Math.abs(point.y - (currEle.y2! + offsetY)) <= threshold){
               e.target.style.cursor = "ew-resize"
             }
-            else if(type === 'line' && Math.abs(point.x - (currEle.x1 + offsetX)) <= threshold && Math.abs(point.y - (currEle.y1 + offsetY)) <= threshold){
+            else if(type === 'line' && Math.abs(point.x - (currEle.x1! + offsetX)) <= threshold && Math.abs(point.y - (currEle.y1! + offsetY)) <= threshold){
               e.target.style.cursor = "e-resize"
             }
             else{
@@ -213,51 +267,59 @@ export const Canvas = () => {
               }
 
               if(e.target.style.cursor === 'ew-resize'){
-                // currEle.dimensions.h += diffY
-                if(type === 'rectangle' && point.x > currEle.dimensions.x + (currEle.dimensions.offsetX ? currEle.dimensions.offsetX : 0)){
-                  currEle.dimensions.w = canvasState.element.dimensions.w + diffX
+                
+                if((type === 'rectangle' || type === 'ellipse') && point.x > currEle.dimensions.x + (currEle.dimensions.offsetX ? currEle.dimensions.offsetX : 0)){
+                  if(type === 'ellipse' && canvasState.element.dimensions.w + diffX <= 5){
+                    return
+                  }else{
+                    currEle.dimensions.w = canvasState.element.dimensions.w + diffX
+                  }
                 }
                 if(type === 'line'){
-                  currEle.x2 = canvasState.element.x2 + diffX
-                  currEle.y2 = canvasState.element.y2 + diffY
-                  currEle.dimensions.x = Math.min(currEle.x1,currEle.x2) 
-                  currEle.dimensions.y = Math.min(currEle.y1,currEle.y2) 
-                  currEle.dimensions.w = Math.abs(currEle.x2-currEle.x1)
-                  currEle.dimensions.h = Math.abs(currEle.y2-currEle.y1)
+                  currEle.x2 = canvasState.element.x2! + diffX
+                  currEle.y2 = canvasState.element.y2! + diffY
+                  currEle.dimensions.x = Math.min(currEle.x1!,currEle.x2) 
+                  currEle.dimensions.y = Math.min(currEle.y1!,currEle.y2) 
+                  currEle.dimensions.w = Math.abs(currEle.x2-currEle.x1!)
+                  currEle.dimensions.h = Math.abs(currEle.y2-currEle.y1!)
                 }
 
               }
 
               if(e.target.style.cursor === 'ns-resize'){
                 
-                if(type === 'rectangle' && point.y > currEle.dimensions.y + (currEle.dimensions.offsetY ? currEle.dimensions.offsetY : 0)){
-                  currEle.dimensions.h = canvasState.element.dimensions.h + diffY
+                if((type === 'rectangle' || type === 'ellipse') && point.y > currEle.dimensions.y + (currEle.dimensions.offsetY ? currEle.dimensions.offsetY : 0)){
+                  if(type === 'ellipse' && canvasState.element.dimensions.h + diffY <= 5){
+                    return
+                  }else{
+                    currEle.dimensions.h = canvasState.element.dimensions.h + diffY
+                  }
                 }
 
               }
               if(e.target.style.cursor === 'e-resize'){
                 
                 if(type === 'line'){
-                  currEle.x1 = canvasState.element.x1 + diffX
-                  currEle.y1 = canvasState.element.y1 + diffY
-                  currEle.dimensions.x = Math.min(currEle.x1,currEle.x2) 
-                  currEle.dimensions.y = Math.min(currEle.y1,currEle.y2) 
-                  currEle.dimensions.w = Math.abs(currEle.x2-currEle.x1)
-                  currEle.dimensions.h = Math.abs(currEle.y2-currEle.y1)
+                  currEle.x1 = canvasState.element.x1! + diffX
+                  currEle.y1 = canvasState.element.y1! + diffY
+                  currEle.dimensions.x = Math.min(currEle.x1,currEle.x2!) 
+                  currEle.dimensions.y = Math.min(currEle.y1,currEle.y2!) 
+                  currEle.dimensions.w = Math.abs(currEle.x2!-currEle.x1)
+                  currEle.dimensions.h = Math.abs(currEle.y2!-currEle.y1)
                 }
               }
 
               if(type === 'line'){
                 const bounds = {
-                  x: currEle.x1 + (currEle.dimensions.offsetX || 0),
-                  y: currEle.y1 + (currEle.dimensions.offsetY || 0),
-                  a: currEle.x2 + (currEle.dimensions.offsetX || 0),
-                  b:currEle.y2 + (currEle.dimensions.offsetY || 0),
+                  x: currEle.x1! + (currEle.dimensions.offsetX || 0),
+                  y: currEle.y1! + (currEle.dimensions.offsetY || 0),
+                  a: currEle.x2! + (currEle.dimensions.offsetX || 0),
+                  b:currEle.y2! + (currEle.dimensions.offsetY || 0),
                   width: currEle.dimensions.w,
                   height: currEle.dimensions.h
                 }
               
-                const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelectionBox)
+                const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelection)
 
                 RenderCanvas(canvas, options,elements, camera,selectRect)
 
@@ -271,7 +333,7 @@ export const Canvas = () => {
                   height: currEle.dimensions.h
                 }
               
-              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelectionBox)
+              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelection)
             
               RenderCanvas(canvas, options,elements, camera, selectRect)
 
@@ -296,7 +358,7 @@ export const Canvas = () => {
                 height: currEle.dimensions.h
               }
 
-              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelectionBox)
+              const selectRect = SelectionBox(ctx,currEle.type ,bounds,setSelection)
 
               ctx.restore()
               
@@ -305,57 +367,123 @@ export const Canvas = () => {
 
           }
 
-          if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Rectangle){
-            const newRect: any = generator.rectangle(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y))
-            updateElement(currEle.id, newRect)
-
-            // ctx?.clearRect(0,0,canvas.width,canvas.height)
-          
-            // ctx?.save()
-            // ctx?.translate(camera.x,camera.y)
-
-            
-            // generator.draw(elements)
-            
-            // ctx?.restore()
-
-            RenderCanvas(canvas, options,elements, camera)
-          }
-
-          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Line) {
-            const newRect: any = generator.line(currEle.dimensions.x,currEle.dimensions.y, point.x,  point.y)
-            updateElement(currEle.id, newRect)
-
-            // ctx?.clearRect(0,0,canvas.width,canvas.height)
-          
-            // ctx?.save()
-            // ctx?.translate(camera.x,camera.y)
-
-            
-            // generator.draw(elements)
-            
-            // ctx?.restore()
+          if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Line) {
+            const newLine: any = generator.line(currEle.dimensions.x,currEle.dimensions.y, point.x,  point.y,currEle.options,null,currEle.id)
+            updateElement(currEle.id, newLine)
 
             RenderCanvas(canvas, options,elements, camera)
 
           }
+          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Rectangle){
+            const newRect: any = generator.rectangle(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y),currEle.options,null,currEle.id)
+            updateElement(currEle.id, newRect)
+            RenderCanvas(canvas, options,elements, camera)
+          }
+          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Ellipse) {
+            const newEllipse: any = generator.ellipse(Math.min(currEle.dimensions.x, point.x),Math.min(currEle.dimensions.y, point.y), Math.abs(currEle.dimensions.x - point.x), Math.abs(currEle.dimensions.y - point.y), currEle.options, null, currEle.id)
+            updateElement(currEle.id, newEllipse)
 
+            RenderCanvas(canvas, options,elements, camera)
 
+          }
+          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Brush){
+            
+            let newPts = canvasState.current as Point[]
+            const currPt = {x:point.x, y: point.y}
+
+            newPts = [...newPts, currPt]
+            canvasState.current = newPts
+
+            let minX = Number.MAX_SAFE_INTEGER
+            let minY = Number.MAX_SAFE_INTEGER
+            let maxX = Number.MIN_SAFE_INTEGER
+            let maxY = Number.MIN_SAFE_INTEGER
+
+            for(let i =0; i<newPts.length; i++){
+              minX = Math.min(newPts[i].x, minX)
+              maxX = Math.max(newPts[i].x, maxX)
+              minY = Math.min(newPts[i].y, minY)
+              maxY = Math.max(newPts[i].y, maxY)
+            }
+
+            currEle.dimensions.w = Math.abs(minX-maxX)
+            currEle.dimensions.h = Math.abs(minY-maxY)
+
+            currEle.dimensions.x = Math.min(currEle.dimensions.x, point.x)
+            currEle.dimensions.y = Math.min(currEle.dimensions.y, point.y)
+
+            const newSvg = generator.brush(currEle.dimensions.x, currEle.dimensions.y, currEle.dimensions.w, currEle.dimensions.h, canvasState.current, currEle.options, null, currEle.id)
+            updateElement(currEle.id, newSvg)
+
+            RenderCanvas(canvas, options,elements, camera)
+          }
+          else if(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Eraser){
+            
+            let newPts = canvasState.current as Point[]
+            const currPt = {x:point.x, y: point.y}
+
+            newPts = [...newPts, currPt]
+            canvasState.current = newPts
+
+            let minX = Number.MAX_SAFE_INTEGER
+            let minY = Number.MAX_SAFE_INTEGER
+            let maxX = Number.MIN_SAFE_INTEGER
+            let maxY = Number.MIN_SAFE_INTEGER
+
+            for(let i =0; i<newPts.length; i++){
+              minX = Math.min(newPts[i].x, minX)
+              maxX = Math.max(newPts[i].x, maxX)
+              minY = Math.min(newPts[i].y, minY)
+              maxY = Math.max(newPts[i].y, maxY)
+            }
+
+            currEle.dimensions.w = Math.abs(minX-maxX)
+            currEle.dimensions.h = Math.abs(minY-maxY)
+
+            currEle.dimensions.x = Math.min(currEle.dimensions.x, point.x)
+            currEle.dimensions.y = Math.min(currEle.dimensions.y, point.y)
+
+            const newSvg = generator.eraser(currEle.dimensions.x, currEle.dimensions.y, currEle.dimensions.w, currEle.dimensions.h, canvasState.current, currEle.options, null, currEle.id)
+            updateElement(currEle.id, newSvg)
+
+            RenderCanvas(canvas, options,elements, camera)
+          }
+        }
+
+        const onKeyDown = (e: any) => {
           
+          if(!(canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle)){
+            return
+          }
 
+          if(e.key === 'Enter'){            
+            currEle.text = currText
+            const metrics = ctx?.measureText(currText)
+            
+            if(metrics?.width){
+              currEle.dimensions.w = (Math.round(metrics?.width)*4)
+            }
+            
+
+            setCanvasState({mode: CanvasMode.None, layerType: LayerType.Text})
+            setCurrText('')
+            setCurrEle(undefined)
+          }
         }
         
         canvas.addEventListener("pointerdown", onPointerDown)
         document.addEventListener("pointerup", onPointerUp)
         canvas.addEventListener("pointermove", onPointerMove)
+        document.addEventListener('keydown', onKeyDown)
 
         return () => {
             canvas.removeEventListener("pointerdown", onPointerDown)
             document.removeEventListener("pointerup", onPointerUp)
             canvas.removeEventListener("pointermove", onPointerMove)
+            document.removeEventListener('keydown', onKeyDown)
         }
         
-    }, [elements, dimensions,canvasState,camera]);
+    }, [elements, dimensions,canvasState,camera,currText,color,strokeWidth,selection]);
 
     const onWheel = useCallback((e: React.WheelEvent) => {
         setCamera((camera) => ({
@@ -382,7 +510,15 @@ export const Canvas = () => {
     return (
         <>
             <ToolBar canvasState={canvasState} setCanvasState={setCanvasState}/>
-            <canvas className='bg-blue-50' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
+            {
+            canvasState.mode === CanvasMode.Inserting && canvasState.layerType === LayerType.Text && currEle && canvasState.current as Point &&
+              <input autoComplete='off' ref={inputRef} id='text-box' className={`bg-transparent w-auto fixed h-10 focus:outline-none font-serif text-4xl`}
+              style={{color: color, top: canvasState.current!.y, left:canvasState.current!.x , width: currText.length > 21 ? currText.length*20 : '394px'}}
+              onChange={(e) => {setCurrText(e.target.value)}} />
+
+            }
+
+            <canvas className='bg-white touch-none' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
         </>
     );
 };

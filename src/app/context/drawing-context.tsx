@@ -1,15 +1,18 @@
 "use client"
 
-import { CanvasMode, CanvasState, LayerType } from "@/types/canvas";
+import { CanvasMode, CanvasState, LayerType, Point } from "@/types/canvas";
 import { createContext, useContext, useState } from "react";
 
 export interface DrawingElement {
     id: string;
-    type: 'rectangle';
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
+    type: string;
+    x1?: number;
+    y1?: number;
+    x2?: number;
+    y2?: number;
+    points?: Point[];
+    options: any;
+    text?: string;
     dimensions: {
         x: number;
         y: number;
@@ -19,11 +22,11 @@ export interface DrawingElement {
         offsetY?: number;
         options?: any
     }
-    // Add other properties as needed
   }
 
 export interface DrawingContextType {
     elements: Map<string, DrawingElement>;
+    setElements: (el: any) => void;
     addElement: (element: DrawingElement) => void;
     removeElement: (id: string) => void;
     pause: () => void;
@@ -31,8 +34,14 @@ export interface DrawingContextType {
     updateElement: (e: string, element:DrawingElement) => void;
     canvasState: CanvasState;
     setCanvasState: (newState: CanvasState) => void;
-    selection: DrawingElement[];
-    setSelection: (elements: DrawingElement[]) => void;
+    selection: DrawingElement | DrawingElement[] | undefined;
+    setSelection: (elements: any) => void;
+    selectedTool: string;
+    setSelectedTool: (tool :string) => void;
+    color: string;
+    setColor: (color: string) => void
+    strokeWidth: number;
+    setStrokeWidth: (width: number) => void
   }
 
 const DrawingContext = createContext<DrawingContextType | undefined>(undefined)
@@ -44,6 +53,9 @@ const DrawingProvider = ({children} : Readonly<{
     const [isPaused,setIsPaused] = useState(false)
     const [canvasState,setCanvasState] = useState<CanvasState>({mode: CanvasMode.None, layerType: LayerType.None})
     const [selection, setSelection] = useState<DrawingElement[]>([])
+    const [selectedTool, setSelectedTool] = useState('none')
+    const [color, setColor] = useState("#000000")
+    const [strokeWidth, setStrokeWidth] = useState(3)
 
     const addElement = (element: DrawingElement | undefined) => {
         if(isPaused){
@@ -80,7 +92,8 @@ const DrawingProvider = ({children} : Readonly<{
       }
 
       return (
-        <DrawingContext.Provider value={{ elements, addElement, removeElement,pause , resume,updateElement,canvasState,setCanvasState,setSelection, selection }}>
+        <DrawingContext.Provider value={{ elements,setElements, addElement, removeElement,pause , resume,updateElement,canvasState,
+        setCanvasState,setSelection, selection, selectedTool, setSelectedTool, color, setColor,strokeWidth, setStrokeWidth }}>
           {children}
         </DrawingContext.Provider>
       );
