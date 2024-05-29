@@ -55,8 +55,12 @@ export const ContextMenu = ({ Icon }: { Icon: LucideIcon }) => {
 
           <DropdownMenuLabel className="h-full w-full flex justify-center items-center">
             Color
-            <ColorPicker />
+            <ColorPicker type="color" />
           </DropdownMenuLabel>
+          {/* <DropdownMenuLabel className="h-full w-full flex justify-center items-center">
+            Background
+          <ColorPicker type="bg"/>
+          </DropdownMenuLabel> */}
         </DropdownMenuContent>
       </DropdownMenu>
     </div>
