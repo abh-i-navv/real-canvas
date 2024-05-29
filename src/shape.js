@@ -299,6 +299,41 @@ export class Shape {
       return ele
     }
 
+    img(x,y,w,h,image,dimensions,id){
+      if(!this.ctx || !x || !y){
+        return;
+      }
+
+      let config= {
+        x: x,
+        y: y,
+        w: w,
+        h: h          
+      }
+
+      this.ctx.save()
+      if(dimensions && (dimensions.offsetX || dimensions.offsetY)){
+        this.ctx.translate(dimensions.offsetX,dimensions.offsetY)
+        config.x += dimensions.offsetX
+        config.y += dimensions.offsetY
+
+      }
+
+      this.type = "image"
+      
+      this.ctx.drawImage(image, x, y,w,h);
+
+      this.ctx.restore()
+
+      const ele = {
+        id: id || this.idGen(),
+        type: this.type,
+        dimensions: config,
+        image: image
+      }
+    
+      return ele
+    }
 
     draw(elements){
       if(!elements || elements.size <=0 ){
@@ -330,6 +365,9 @@ export class Shape {
               case "eraser":
                 const eraser = this.eraser(el.dimensions.x, el.dimensions.y, el.dimensions.w, el.dimensions.h, el.points, el.options,el.dimensions,el.id)
               return eraser
+              case "image":
+                const image = this.img(el.dimensions.x, el.dimensions.y, el.dimensions.w, el.dimensions.h, el.image,el.dimensions,el.id)
+              return image
               
               default:
                 return

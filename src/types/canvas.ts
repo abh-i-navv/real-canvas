@@ -57,6 +57,7 @@ export type CanvasState =
           | LayerType.Line
           | LayerType.Brush
           | LayerType.Eraser;
+        current? : Point
       }
     | {
         mode: CanvasMode.Pressing;
@@ -69,7 +70,7 @@ export type CanvasState =
       }
     | {
         mode: CanvasMode.Translating;
-        current: Point;
+        current: Point | XYWH;
         id?: string;
         element: DrawingElement;
       }

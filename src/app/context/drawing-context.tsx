@@ -11,7 +11,8 @@ export interface DrawingElement {
     x2?: number;
     y2?: number;
     points?: Point[];
-    options: any;
+    options?: any;
+    image?: any;
     text?: string;
     dimensions: {
         x: number;
@@ -42,6 +43,8 @@ export interface DrawingContextType {
     setColor: (color: string) => void
     strokeWidth: number;
     setStrokeWidth: (width: number) => void
+    backgroundColor: string;
+    setBackgroundColor: (color: string) => void
   }
 
 const DrawingContext = createContext<DrawingContextType | undefined>(undefined)
@@ -56,6 +59,7 @@ const DrawingProvider = ({children} : Readonly<{
     const [selectedTool, setSelectedTool] = useState('none')
     const [color, setColor] = useState("#000000")
     const [strokeWidth, setStrokeWidth] = useState(3)
+    const [backgroundColor, setBackgroundColor] = useState("#ffffff")
 
     const addElement = (element: DrawingElement | undefined) => {
         if(isPaused){
@@ -93,7 +97,7 @@ const DrawingProvider = ({children} : Readonly<{
 
       return (
         <DrawingContext.Provider value={{ elements,setElements, addElement, removeElement,pause , resume,updateElement,canvasState,
-        setCanvasState,setSelection, selection, selectedTool, setSelectedTool, color, setColor,strokeWidth, setStrokeWidth }}>
+        setCanvasState,setSelection, selection, selectedTool, setSelectedTool, color, setColor,strokeWidth, setStrokeWidth, backgroundColor, setBackgroundColor }}>
           {children}
         </DrawingContext.Provider>
       );

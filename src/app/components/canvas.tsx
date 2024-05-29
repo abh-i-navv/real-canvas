@@ -3,7 +3,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {Shape} from "../../shape"
 import { DrawingElement, useDrawingContext } from '../context/drawing-context';
-import { CanvasMode, LayerType, Point } from '@/types/canvas';
+import { CanvasMode, LayerType, Point, XYWH } from '@/types/canvas';
 import { ToolBar } from './toolbar';
 import { elementFinder, getPathData, pointerEventToCanvasPoint } from '@/lib/utils';
 import { SelectionBox } from './selection-box';
@@ -12,10 +12,10 @@ import { RenderCanvas } from './render';
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color, strokeWidth } = useDrawingContext();
+    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color, strokeWidth,backgroundColor } = useDrawingContext();
     const [camera, setCamera] = useState<Point>({x:0, y:0})
     const [currEle, setCurrEle] = useState<DrawingElement>()
-    // const [selection, setSelection] = useState<DrawingElement | DrawingElement[]>()
+    const [imageDimensions, setImageDimensions] = useState({w:0, h:0})
     const inputRef = useRef<HTMLInputElement>(null)
     const [currText, setCurrText] = useState<string>('')
 
@@ -45,6 +45,8 @@ export const Canvas = () => {
               const selectedEle = elementFinder({x:point.x, y:point.y}, elements)
               setSelection(undefined)
               
+              setCanvasState({mode: CanvasMode.None, layerType: LayerType.None, current: {x:point.x, y:point.y}})
+              
               if(!selectedEle){
                 setSelection(undefined)
                 return
@@ -54,9 +56,7 @@ export const Canvas = () => {
               if(type === 'eraser'){
                 return
               }
-
-              const newDimensions = {x:point.x, y:point.y}
-
+              let newDimensions = {x:point.x, y:point.y}
               const {dimensions} = selectedEle
               
 
@@ -91,12 +91,19 @@ export const Canvas = () => {
                 SelectionBox(ctx,selectedEle.type, bounds, setSelection)
 
               }
-
+              let cloneEle
               setCurrEle(selectedEle)
-              
-              const cloneEle = structuredClone(selectedEle)
+             
+              if(selectedEle.type === "image"){
+                const w = selectedEle.dimensions.w
+                const h = selectedEle.dimensions.h
+                setImageDimensions({w: w, h: h})
+              }
+              else{
+                cloneEle = structuredClone(selectedEle)
+              }
 
-              setCanvasState({mode: CanvasMode.Translating, current: newDimensions, id: selectedEle?.id,element: cloneEle})
+              setCanvasState({mode: CanvasMode.Translating, current: newDimensions, id: selectedEle?.id,element: cloneEle || selectedEle})
               
             }
 
@@ -152,12 +159,13 @@ export const Canvas = () => {
               const points=  [{x:point.x, y: point.y}]
 
               setCanvasState({mode: CanvasMode.Inserting, layerType: LayerType.Eraser, current: points})
-              options.strokeStyle = "#ffffff"
+              options.strokeStyle = backgroundColor
               const brush:any = generator.eraser(point.x,point.y,5,5,points,options)
               setCurrEle(brush)
               addElement(brush)
               
             }
+            
             
         }
 
@@ -240,6 +248,22 @@ export const Canvas = () => {
               }
               e.target.style.cursor = "ew-resize"
             }
+            else if(type !== 'line' && Math.abs(point.x - (currEle.dimensions.w + currEle.dimensions.x + offsetX)) <= threshold && Math.abs(point.y - (currEle.dimensions.h + currEle.dimensions.y + offsetY)) <= threshold){
+              if(type === 'text' || type === 'brush'){
+                return
+              }
+              e.target.style.cursor = "nwse-resize"
+            }
+            // else if(type !== 'line' && Math.abs(point.x - (currEle.dimensions.x + offsetX)) <= threshold && Math.abs(point.y - (currEle.dimensions.y + offsetY)) <= threshold){
+            //   if(type === 'text' || type === 'brush'){
+            //     return
+            //   }
+            //   e.target.style.cursor = "nw-resize"
+            // }
+
+
+
+
             else if(type === 'line' && Math.abs(point.x - (currEle.x2! + offsetX)) <= threshold && Math.abs(point.y - (currEle.y2! + offsetY)) <= threshold){
               e.target.style.cursor = "ew-resize"
             }
@@ -255,7 +279,7 @@ export const Canvas = () => {
 
           if(canvasState.mode === CanvasMode.Translating){
 
-            if(e.target.style.cursor === 'ew-resize' || e.target.style.cursor === 'ns-resize' || e.target.style.cursor === 'e-resize'){
+            if(e.target.style.cursor === 'ew-resize' || e.target.style.cursor === 'ns-resize' || e.target.style.cursor === 'e-resize' || e.target.style.cursor === "nwse-resize"){
               let diffX = (point.x - canvasState.current.x )
               let diffY = point.y - canvasState.current.y 
               
@@ -268,12 +292,17 @@ export const Canvas = () => {
 
               if(e.target.style.cursor === 'ew-resize'){
                 
-                if((type === 'rectangle' || type === 'ellipse') && point.x > currEle.dimensions.x + (currEle.dimensions.offsetX ? currEle.dimensions.offsetX : 0)){
+                if((type === 'rectangle' || type === 'ellipse' || type === 'image') && point.x > currEle.dimensions.x + (currEle.dimensions.offsetX ? currEle.dimensions.offsetX : 0)){
                   if(type === 'ellipse' && canvasState.element.dimensions.w + diffX <= 5){
                     return
-                  }else{
+                  }
+                  else if(type === "image"){
+                    currEle.dimensions.w = imageDimensions.w + diffX
+                  }
+                  else{
                     currEle.dimensions.w = canvasState.element.dimensions.w + diffX
                   }
+                  
                 }
                 if(type === 'line'){
                   currEle.x2 = canvasState.element.x2! + diffX
@@ -288,10 +317,14 @@ export const Canvas = () => {
 
               if(e.target.style.cursor === 'ns-resize'){
                 
-                if((type === 'rectangle' || type === 'ellipse') && point.y > currEle.dimensions.y + (currEle.dimensions.offsetY ? currEle.dimensions.offsetY : 0)){
+                if((type === 'rectangle' || type === 'ellipse' || type === "image") && point.y > currEle.dimensions.y + (currEle.dimensions.offsetY ? currEle.dimensions.offsetY : 0)){
                   if(type === 'ellipse' && canvasState.element.dimensions.h + diffY <= 5){
                     return
-                  }else{
+                  }
+                  else if(type === "image"){
+                    currEle.dimensions.h = imageDimensions.h+ diffY
+                  }
+                  else{
                     currEle.dimensions.h = canvasState.element.dimensions.h + diffY
                   }
                 }
@@ -308,6 +341,26 @@ export const Canvas = () => {
                   currEle.dimensions.h = Math.abs(currEle.y2!-currEle.y1)
                 }
               }
+              if(e.target.style.cursor === 'nwse-resize'){
+                
+                if((type === 'rectangle' || type === 'ellipse' || type === 'image') && point.x > currEle.dimensions.x + (currEle.dimensions.offsetX ? currEle.dimensions.offsetX : 0) && point.y > currEle.dimensions.y + (currEle.dimensions.offsetY ? currEle.dimensions.offsetY : 0)){
+                  if(type === 'ellipse' && (canvasState.element.dimensions.w + diffX <= 5 || canvasState.element.dimensions.h + diffY <= 5)){
+                    return
+                  }
+                  else if(type === "image"){
+                    currEle.dimensions.w = imageDimensions.w + diffX
+                    currEle.dimensions.h = imageDimensions.h+ diffY
+                  }
+                  else{
+                    currEle.dimensions.w = canvasState.element.dimensions.w + diffX
+                    currEle.dimensions.h = canvasState.element.dimensions.h + diffY
+                  }
+                  
+                }
+              }
+                
+
+
 
               if(type === 'line'){
                 const bounds = {
@@ -471,19 +524,51 @@ export const Canvas = () => {
           }
         }
         
+        const onPaste = (event: ClipboardEvent) => {
+          if(!ctx){
+            return
+          }
+          if (event.clipboardData) {
+            const items = event.clipboardData.items;
+            for (const item of items) {
+              
+              if (item.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) {
+                  const imageUrl = URL.createObjectURL(file);
+                  const image = new Image();
+                  image.src = imageUrl;
+                  image.onload = () => {
+                    if (ctx && canvasState.mode === CanvasMode.None && canvasState.layerType === LayerType.None) {
+                      const newImg = generator.img( canvasState.current?.x || 100,canvasState.current?.y || 100,image.width,image.height,image)
+                      if(newImg){
+                        addElement(newImg)
+                      }
+                      
+                    }
+                    URL.revokeObjectURL(imageUrl)
+                  };
+                }
+              }
+            }
+          }
+        }
+
         canvas.addEventListener("pointerdown", onPointerDown)
         document.addEventListener("pointerup", onPointerUp)
         canvas.addEventListener("pointermove", onPointerMove)
         document.addEventListener('keydown', onKeyDown)
+        document.addEventListener("paste",onPaste)
 
         return () => {
             canvas.removeEventListener("pointerdown", onPointerDown)
             document.removeEventListener("pointerup", onPointerUp)
             canvas.removeEventListener("pointermove", onPointerMove)
             document.removeEventListener('keydown', onKeyDown)
+            document.removeEventListener("paste",onPaste)
         }
         
-    }, [elements, dimensions,canvasState,camera,currText,color,strokeWidth,selection]);
+    }, [elements, dimensions,canvasState,camera,currText,color,strokeWidth,selection,backgroundColor]);
 
     const onWheel = useCallback((e: React.WheelEvent) => {
         setCamera((camera) => ({
@@ -518,7 +603,9 @@ export const Canvas = () => {
 
             }
 
-            <canvas className='bg-white touch-none' height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
+            <canvas className='touch-none'
+              style={{background: backgroundColor}}
+              height={ dimensions.height} width={dimensions.width} ref={canvasRef} onWheel={onWheel}/>
         </>
     );
 };
