@@ -5,14 +5,14 @@ import {Shape} from "../../shape"
 import { DrawingElement, useDrawingContext } from '../context/drawing-context';
 import { CanvasMode, LayerType, Point, XYWH } from '@/types/canvas';
 import { ToolBar } from './toolbar';
-import { elementFinder, getPathData, pointerEventToCanvasPoint } from '@/lib/utils';
+import { deserializeMap, elementFinder, getPathData, pointerEventToCanvasPoint, serializeMap } from '@/lib/utils';
 import { SelectionBox } from './selection-box';
 import { RenderCanvas } from './render';
 
 export const Canvas = () => {
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
-    const { elements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color, strokeWidth,backgroundColor } = useDrawingContext();
+    const { elements,setElements, addElement, removeElement, pause, resume,updateElement,setCanvasState,canvasState, selection, setSelection,color, strokeWidth,backgroundColor } = useDrawingContext();
     const [camera, setCamera] = useState<Point>({x:0, y:0})
     const [currEle, setCurrEle] = useState<DrawingElement>()
     const [imageDimensions, setImageDimensions] = useState({w:0, h:0})
@@ -30,6 +30,18 @@ export const Canvas = () => {
             strokeStyle: color,
             lineJoin: "bevel"
           } 
+
+          const  localEle = localStorage.getItem('elements')
+          if(localEle){
+            const storageEle = deserializeMap(localEle)
+            if(storageEle){
+              setElements(storageEle)
+              localStorage.clear()
+            }
+            
+          }
+          
+
           const generator = new Shape(ctx,options)
 
           RenderCanvas(canvas, options,elements, camera, selection)
@@ -591,6 +603,21 @@ export const Canvas = () => {
           };
         }
       }, [camera]);
+
+    useEffect(() => {
+      const saveElementToLocal = (e: any) => {
+        localStorage.setItem('elements', serializeMap(elements))
+      };
+      
+      window.addEventListener("beforeunload", saveElementToLocal);
+      
+      
+      return () => {
+        window.removeEventListener("beforeunload", saveElementToLocal);
+      };
+
+    }, [elements]);
+    
 
     return (
         <>

@@ -82,3 +82,22 @@ export const getPathData = (pts: Point[],options: any) => {
 
   return pathData
 }
+
+export const serializeMap = (map: Map<string, DrawingElement>): string => {
+  const obj: Record<string, DrawingElement> = {};
+  map.forEach((value, key) => {
+    if(value.type !== "image"){
+      obj[key] = value;
+    }
+  });
+  return JSON.stringify(obj);
+};
+
+export const deserializeMap = (str: string): Map<string, DrawingElement> => {
+  const obj = JSON.parse(str);
+  const map = new Map<string, DrawingElement>();
+  Object.keys(obj).forEach(key => {
+    map.set(key, obj[key]);
+  });
+  return map;
+};
